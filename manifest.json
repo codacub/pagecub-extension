@@ -56,6 +56,7 @@
       "assets/side-panel.css"
     ],
     "js": [
+      "libs/simple-pdf.js",
       "src/utils/utilities.js",
       "src/utils/design-tokens.js",
       "src/services/storage-service.js",

@@ -22,7 +22,7 @@ window.ThreadCubTagging = class ThreadCubTagging {
     this.mouseUpHandler = null;
     this.clickHandler = null;
     this.highlightCounter = 0;
-    this.currentPlatform = this.detectPlatform();
+    this.currentPlatform = 'generic';
     this.currentStorageKey = null;
     this.lastUrl = window.location.href;
     
@@ -41,8 +41,8 @@ window.ThreadCubTagging = class ThreadCubTagging {
   }
 
   detectPlatform() {
-    // Use the centralized platform detector module
-    return window.PlatformDetector.detectPlatform();
+    // PageCub works on all websites - no platform-specific detection needed
+    return 'generic';
   }
 
   async init() {
@@ -1486,8 +1486,14 @@ handleFindOutMore() {
 populateChatInputDirectly(text) {
   console.log('🏷️ ThreadCub: Adding text directly to chat input:', text.substring(0, 50) + '...');
   
-  // Get platform-specific selectors from centralized module
-  const selectors = window.PlatformDetector.getInputSelectors();
+  // Common input selectors for various websites
+  const selectors = [
+    'textarea',
+    '[contenteditable="true"]',
+    'input[type="text"]',
+    '.editor',
+    '.input-field'
+  ];
 
   // Try each selector until we find a working input field
   for (const selector of selectors) {

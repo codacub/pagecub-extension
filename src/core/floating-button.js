@@ -721,55 +721,26 @@ class PageCubFloatingButton {
       const extractor = new PageExtractor();
       const content = extractor.extract();
 
-      // For PDF, we'll use the browser's print functionality
-      // Create a clean print view
-      const printWindow = window.open('', '_blank');
-      printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>${content.title}</title>
-          <style>
-            body {
-              font-family: Georgia, serif;
-              max-width: 800px;
-              margin: 40px auto;
-              padding: 20px;
-              line-height: 1.6;
-            }
-            h1 {
-              border-bottom: 2px solid #333;
-              padding-bottom: 10px;
-            }
-            .metadata {
-              color: #666;
-              font-size: 0.9em;
-              margin-bottom: 30px;
-            }
-          </style>
-        </head>
-        <body>
-          <h1>${content.title}</h1>
-          <div class="metadata">
-            <p><strong>Author:</strong> ${content.author}</p>
-            <p><strong>URL:</strong> ${content.url}</p>
-            <p><strong>Date:</strong> ${content.publishDate}</p>
-          </div>
-          <div class="content">
-            ${content.bodyText.replace(/\n/g, '<br>')}
-          </div>
-        </body>
-        </html>
-      `);
-      printWindow.document.close();
+      // Generate PDF using SimplePDF
+      const pdfContent = SimplePDF.fromContent(content);
 
-      // Trigger print dialog
-      setTimeout(() => {
-        printWindow.print();
-      }, 500);
+      // Generate filename
+      const filename = this.sanitizeFilename(content.title) + '.pdf';
 
-      this.showToast('Opening print dialog...', 'info');
-      console.log('PageCub: PDF print dialog opened');
+      // Download the PDF file
+      const blob = new Blob([pdfContent], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      this.showSuccessToast('Downloaded as PDF!');
+      console.log('PageCub: PDF download completed:', filename);
     } catch (error) {
       console.error('PageCub: PDF download failed:', error);
       this.showErrorToast('Download failed: ' + error.message);

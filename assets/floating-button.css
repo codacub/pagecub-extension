@@ -229,6 +229,8 @@
 /* Individual Action Buttons */
 .threadcub-new-btn,
 .threadcub-download-btn,
+.threadcub-markdown-btn,
+.threadcub-pdf-btn,
 .threadcub-tag-btn,
 .threadcub-close-btn {
   width: var(--action-button-size);
@@ -250,6 +252,8 @@
 
 .threadcub-new-btn svg,
 .threadcub-download-btn svg,
+.threadcub-markdown-btn svg,
+.threadcub-pdf-btn svg,
 .threadcub-tag-btn svg,
 .threadcub-close-btn svg {
   width: var(--icon-size-action-btn);
@@ -265,6 +269,20 @@
 }
 
 .threadcub-download-btn:hover {
+  background: var(--color-action-btn-download-bg-hover) !important;
+  color: var(--color-action-btn-download-text-hover) !important;
+  transform: scale(1.1) !important;
+  box-shadow: var(--shadow-action-btn-download-hover) !important;
+}
+
+.threadcub-markdown-btn:hover {
+  background: var(--color-action-btn-new-bg-hover) !important;
+  color: var(--color-action-btn-new-text-hover) !important;
+  transform: scale(1.1) !important;
+  box-shadow: var(--shadow-action-btn-new-hover) !important;
+}
+
+.threadcub-pdf-btn:hover {
   background: var(--color-action-btn-download-bg-hover) !important;
   color: var(--color-action-btn-download-text-hover) !important;
   transform: scale(1.1) !important;
@@ -318,6 +336,8 @@
 /* Scale effect for action buttons on hover of main button */
 #threadcub-edge-btn:hover .threadcub-new-btn,
 #threadcub-edge-btn:hover .threadcub-download-btn,
+#threadcub-edge-btn:hover .threadcub-markdown-btn,
+#threadcub-edge-btn:hover .threadcub-pdf-btn,
 #threadcub-edge-btn:hover .threadcub-tag-btn,
 #threadcub-edge-btn:hover .threadcub-close-btn {
   transform: scale(1); /* Return to normal size */
