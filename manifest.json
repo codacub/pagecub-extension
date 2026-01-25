@@ -38,17 +38,7 @@
   ],
   
   "host_permissions": [
-    "https://claude.ai/*",
-    "https://chat.openai.com/*",
-    "https://chatgpt.com/*",
-    "https://gemini.google.com/*",
-    "https://copilot.microsoft.com/*",
-    "https://grok.x.ai/*",
-    "https://grok.com/*",
-    "https://x.com/*",
-    "https://chat.deepseek.com/*",
-    "https://threadcub.com/*",
-    "https://*.threadcub.com/*"
+    "<all_urls>"
   ],
   
   "background": {
@@ -58,15 +48,7 @@
   "content_scripts": [
   {
     "matches": [
-      "https://claude.ai/*",
-      "https://chat.openai.com/*",
-      "https://chatgpt.com/*",
-      "https://gemini.google.com/*",
-      "https://copilot.microsoft.com/*",
-      "https://grok.x.ai/*",
-      "https://grok.com/*",
-      "https://x.com/*",
-      "https://chat.deepseek.com/*"
+      "<all_urls>"
     ],
     "css": [
       "assets/tokens.css",
@@ -74,18 +56,15 @@
       "assets/side-panel.css"
     ],
     "js": [
-      "src/utils/platform-detector.js",
       "src/utils/utilities.js",
+      "src/utils/design-tokens.js",
       "src/services/storage-service.js",
-      "src/services/api-service.js",
-      "src/core/conversation-extractor.js",
       "src/ui/ui-components.js",
+      "src/core/page-extractor.js",
+      "src/features/download-manager.js",
+      "src/features/tagging-system.js",
       "src/ui/side-panel.js",
       "src/core/floating-button.js",
-      "src/features/tagging-system.js",
-      "src/features/continuation-system.js",
-      "src/features/platform-autostart.js",
-      "src/features/download-manager.js",
       "src/core/app-initializer.js",
       "content.js"
     ],
@@ -95,7 +74,7 @@
   
   "action": {
     "default_popup": "popup/popup.html",
-    "default_title": "ThreadCub Exporter",
+    "default_title": "PageCub",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",
@@ -104,5 +83,5 @@
     }
   },
 
-  "homepage_url": "https://threadcub.com"
+  "homepage_url": "https://pagecub.com"
 }

@@ -1,9 +1,9 @@
-console.log('🔧 LOADING: floating-button.js');
+console.log('LOADING: floating-button.js');
 
-// ThreadCub Floating Button Module
-// Extracted from Section 4A-4F of content.js
+// PageCub Floating Button Module
+// Webpage download functionality
 
-class ThreadCubFloatingButton {
+class PageCubFloatingButton {
   constructor() {
     this.button = null;
     this.shadowButton = null;
@@ -19,7 +19,7 @@ class ThreadCubFloatingButton {
     this.isExporting = false;
     this.lastExportTime = 0;
 
-    console.log('🐻 ThreadCub: Starting floating button...');
+    console.log('PageCub: Starting floating button...');
 
     this.init();
   }
@@ -31,7 +31,7 @@ class ThreadCubFloatingButton {
     this.setupEventListeners();
     this.loadPosition();
 
-    console.log('🐻 ThreadCub: Floating button ready!');
+    console.log('PageCub: Floating button ready!');
   }
 
   createButton() {
@@ -48,18 +48,21 @@ class ThreadCubFloatingButton {
         </div>
       </div>
       <div class="threadcub-action-buttons">
-        <div class="threadcub-new-btn" data-action="new">
+        <div class="threadcub-markdown-btn" data-action="download-markdown">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/>
-            <path d="m21 3-9 9"/>
-            <path d="M15 3h6v6"/>
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14,2 14,8 20,8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+            <polyline points="10,9 9,9 8,9"/>
           </svg>
         </div>
-        <div class="threadcub-download-btn" data-action="download">
+        <div class="threadcub-pdf-btn" data-action="download-pdf">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 15V3"/>
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <path d="m7 10 5 5 5-5"/>
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14,2 14,8 20,8"/>
+            <path d="M9 15h6"/>
+            <path d="M12 12v6"/>
           </svg>
         </div>
         <div class="threadcub-tag-btn" data-action="tag">
@@ -192,10 +195,10 @@ class ThreadCubFloatingButton {
 
   setupTooltips() {
     const tooltipData = {
-      'threadcub-new-btn': 'CONTINUE YOUR CHAT',
-      'threadcub-download-btn': 'SAVE FOR LATER',
-      'threadcub-tag-btn': 'YOUR TAGS',
-      'threadcub-close-btn': 'BYE FOR NOW'
+      'threadcub-markdown-btn': 'DOWNLOAD AS MARKDOWN',
+      'threadcub-pdf-btn': 'DOWNLOAD AS PDF',
+      'threadcub-tag-btn': 'MANAGE TAGS',
+      'threadcub-close-btn': 'CLOSE'
     };
 
     Object.entries(tooltipData).forEach(([className, text]) => {
@@ -271,21 +274,21 @@ class ThreadCubFloatingButton {
   }
 
   setupBearExpressionListeners() {
-    const newBtn = this.button.querySelector('.threadcub-new-btn');
-    const downloadBtn = this.button.querySelector('.threadcub-download-btn');
+    const markdownBtn = this.button.querySelector('.threadcub-markdown-btn');
+    const pdfBtn = this.button.querySelector('.threadcub-pdf-btn');
     const tagBtn = this.button.querySelector('.threadcub-tag-btn');
     const closeBtn = this.button.querySelector('.threadcub-close-btn');
 
     // These listeners change the bear image, which is HTML content, not CSS
     // The images themselves have a class for CSS transitions
-    if (newBtn) {
-      newBtn.addEventListener('mouseenter', () => this.setBearExpression('happy'));
-      newBtn.addEventListener('mouseleave', () => this.setBearExpression('happy'));
+    if (markdownBtn) {
+      markdownBtn.addEventListener('mouseenter', () => this.setBearExpression('happy'));
+      markdownBtn.addEventListener('mouseleave', () => this.setBearExpression('happy'));
     }
 
-    if (downloadBtn) {
-      downloadBtn.addEventListener('mouseenter', () => this.setBearExpression('happy'));
-      downloadBtn.addEventListener('mouseleave', () => this.setBearExpression('happy'));
+    if (pdfBtn) {
+      pdfBtn.addEventListener('mouseenter', () => this.setBearExpression('happy'));
+      pdfBtn.addEventListener('mouseleave', () => this.setBearExpression('happy'));
     }
 
     if (tagBtn) {
@@ -384,24 +387,25 @@ class ThreadCubFloatingButton {
     e.stopPropagation();
 
     // Check for action button clicks
-    const newBtn = e.target.closest('.threadcub-new-btn');
-    const downloadBtn = e.target.closest('.threadcub-download-btn');
+    const markdownBtn = e.target.closest('.threadcub-markdown-btn');
+    const pdfBtn = e.target.closest('.threadcub-pdf-btn');
     const tagBtn = e.target.closest('.threadcub-tag-btn');
     const closeBtn = e.target.closest('.threadcub-close-btn');
 
-    if (newBtn) {
-      this.saveAndOpenConversation('floating');
+    if (markdownBtn) {
+      console.log('PageCub: Markdown download button clicked');
+      this.downloadAsMarkdown();
       return;
     }
 
-    if (downloadBtn) {
-      console.log('🐻 ThreadCub: Download button clicked by user - manual download only');
-      this.downloadConversationJSON();
+    if (pdfBtn) {
+      console.log('PageCub: PDF download button clicked');
+      this.downloadAsPDF();
       return;
     }
 
     if (tagBtn) {
-      console.log('🏷️ ThreadCub: Tag button clicked');
+      console.log('PageCub: Tag button clicked');
       this.handleTagButtonClick();
       return;
     }
@@ -670,768 +674,156 @@ class ThreadCubFloatingButton {
     }
     // Also remove any active tooltips
     document.querySelectorAll('.threadcub-tooltip').forEach(t => t.remove());
-    console.log('🐻 ThreadCub: Button destroyed');
+    console.log('PageCub: Button destroyed');
   }
 
-  // Session ID management removed - now using window.StorageService.getOrCreateSessionId()
-
-  // ===== REAL WORKING METHODS (MOVED FROM CONTENT.JS) =====
-  async saveAndOpenConversation(source = 'floating') {
-  console.log('🐻 ThreadCub: Starting conversation save and open from:', source);
-
-  // ===== GET USER AUTH TOKEN VIA BACKGROUND SCRIPT =====
-  console.log('🔧 Getting user auth token via background script...');
-  let userAuthToken = null;
-
-  try {
-    const response = await chrome.runtime.sendMessage({ action: 'getAuthToken' });
-    if (response && response.success) {
-      userAuthToken = response.authToken;
-      console.log('🔧 Auth token retrieved from ThreadCub tab:', !!userAuthToken);
-      console.log('🔧 Auth token length:', userAuthToken?.length || 'null');
-    } else {
-      console.log('🔧 Could not get auth token:', response?.error || 'Unknown error');
-    }
-  } catch (error) {
-    console.log('🔧 Background script communication failed:', error);
-  }
-
-  // Prevent double exports with debounce
-  const now = Date.now();
-  if (this.isExporting || (now - this.lastExportTime) < 2000) {
-    console.log('🐻 ThreadCub: Export already in progress or too soon after last export');
-    return;
-  }
-
-  this.isExporting = true;
-  this.lastExportTime = now;
-
-  try {
-    // Extract conversation data from the current AI platform
-    conversationData = await window.ConversationExtractor.extractConversation();
-
-    console.log('🔍 DEBUG: Current hostname:', window.location.hostname);
-    const targetPlatform = window.ConversationExtractor.getTargetPlatformFromCurrentUrl();
-    console.log('🔍 DEBUG: targetPlatform detected as:', targetPlatform);
-
-    // CRITICAL FIX: Validate conversation data before proceeding
-    if (!conversationData) {
-      console.error('🐻 ThreadCub: No conversation data returned from extraction');
-      this.showErrorToast('No conversation found to save');
-      this.isExporting = false;
-      return;
-    }
-
-    if (!conversationData.messages || conversationData.messages.length === 0) {
-      console.error('🐻 ThreadCub: No messages found in conversation data');
-      this.showErrorToast('No messages found in conversation');
-      this.isExporting = false;
-      return;
-    }
-
-    console.log(`🐻 ThreadCub: Successfully extracted ${conversationData.messages.length} messages`);
-
-    // Store conversation data globally for later use
-    this.lastConversationData = conversationData;
-
-    // Format data to match API route expectations (WITH AUTH TOKEN)
-    // Get session ID for anonymous conversation tracking
-    const sessionId = await window.StorageService.getOrCreateSessionId();
-    console.log('🔍 Session ID for API call:', sessionId);
-
-    const apiData = {
-      conversationData: conversationData,
-      source: conversationData.platform?.toLowerCase() || 'unknown',
-      title: conversationData.title || 'Untitled Conversation',
-      userAuthToken: userAuthToken,
-      sessionId: sessionId
-    };
-
-    console.log('🔍 API Data includes sessionId:', !!apiData.sessionId);
-
-    // API call via ApiService
+  // ===== PAGECUB DOWNLOAD METHODS =====
+  async downloadAsMarkdown() {
     try {
-      const data = await window.ApiService.saveConversation(apiData);
+      // Show loading toast
+      this.showToast('Extracting page content...', 'info');
 
-      // Generate continuation prompt and handle platform-specific flow
-      const summary = data.summary || window.ConversationExtractor.generateQuickSummary(conversationData.messages);
-      const shareUrl = data.shareableUrl || `https://threadcub.com/api/share/${data.conversationId}`;
+      // Extract page content
+      const extractor = new PageExtractor();
+      const content = extractor.extract();
 
-      // Generate minimal continuation prompt
-      const minimalPrompt = window.ConversationExtractor.generateContinuationPrompt(summary, shareUrl, conversationData.platform, conversationData);
+      // Convert to Markdown with frontmatter
+      const markdown = this.convertToMarkdown(content);
 
-      console.log('🔍 DEBUG: About to route to platform:', targetPlatform);
+      // Generate filename
+      const filename = this.sanitizeFilename(content.title) + '.md';
 
-      if (targetPlatform === 'chatgpt') {
-        console.log('🤖 ThreadCub: Routing to ChatGPT flow (with file download)');
-        this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
-      } else if (targetPlatform === 'claude') {
-        console.log('🤖 ThreadCub: Routing to Claude flow (no file download)');
-        this.handleClaudeFlow(minimalPrompt, shareUrl, conversationData);
-      } else if (targetPlatform === 'gemini') {
-        console.log('🤖 ThreadCub: Routing to Gemini flow (with file download)');
-        this.handleGeminiFlow(minimalPrompt, shareUrl, conversationData);
-      } else if (targetPlatform === 'grok') {
-        console.log('🤖 ThreadCub: Routing to Grok flow (with file download)');
-        this.handleGrokFlow(minimalPrompt, shareUrl, conversationData);
-      } else if (targetPlatform === 'deepseek') {
-        console.log('🔵 ThreadCub: Routing to DeepSeek flow (with file download)');
-        this.handleDeepSeekFlow(minimalPrompt, shareUrl, conversationData);
-      } else {
-        console.log('🤖 ThreadCub: Unknown platform, defaulting to ChatGPT flow');
-        this.handleChatGPTFlow(minimalPrompt, shareUrl, conversationData);
-      }
+      // Download the file
+      const blob = new Blob([markdown], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
 
-      this.setBearExpression('happy');
+      this.showSuccessToast('Downloaded as Markdown!');
+      console.log('PageCub: Markdown download completed:', filename);
+    } catch (error) {
+      console.error('PageCub: Markdown download failed:', error);
+      this.showErrorToast('Download failed: ' + error.message);
+    }
+  }
+
+  async downloadAsPDF() {
+    try {
+      this.showToast('Extracting page content...', 'info');
+
+      // Extract page content
+      const extractor = new PageExtractor();
+      const content = extractor.extract();
+
+      // For PDF, we'll use the browser's print functionality
+      // Create a clean print view
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>${content.title}</title>
+          <style>
+            body {
+              font-family: Georgia, serif;
+              max-width: 800px;
+              margin: 40px auto;
+              padding: 20px;
+              line-height: 1.6;
+            }
+            h1 {
+              border-bottom: 2px solid #333;
+              padding-bottom: 10px;
+            }
+            .metadata {
+              color: #666;
+              font-size: 0.9em;
+              margin-bottom: 30px;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>${content.title}</h1>
+          <div class="metadata">
+            <p><strong>Author:</strong> ${content.author}</p>
+            <p><strong>URL:</strong> ${content.url}</p>
+            <p><strong>Date:</strong> ${content.publishDate}</p>
+          </div>
+          <div class="content">
+            ${content.bodyText.replace(/\n/g, '<br>')}
+          </div>
+        </body>
+        </html>
+      `);
+      printWindow.document.close();
+
+      // Trigger print dialog
       setTimeout(() => {
-        if (this.currentBearState !== 'default') {
-          this.setBearExpression('default');
-        }
-      }, 2000);
+        printWindow.print();
+      }, 500);
 
-      this.isExporting = false;
-
-    } catch (apiError) {
-      console.error('🐻 ThreadCub: Direct API call failed:', apiError);
-      console.log('🐻 ThreadCub: Falling back to direct continuation without API save...');
-
-      // FALLBACK: Skip API save and go straight to continuation
-      this.handleDirectContinuation(conversationData);
-      this.isExporting = false;
-      return;
-    }
-
-  } catch (error) {
-    console.error('🐻 ThreadCub: Export error:', error);
-    this.showErrorToast('Export failed: ' + error.message);
-    this.isExporting = false;
-  }
-  }
-
-  async downloadConversationJSON() {
-    console.log('🐻 ThreadCub: Starting JSON download...');
-
-    try {
-      // Extract conversation data from the current AI platform
-      console.log('🐻 ThreadCub: Extracting conversation data for download...');
-
-      conversationData = await window.ConversationExtractor.extractConversation();
-
-      if (!conversationData || !conversationData.messages || conversationData.messages.length === 0) {
-        console.error('🐻 ThreadCub: No conversation data found');
-        console.log('🐻 ThreadCub: Conversation data:', conversationData);
-
-        // Create a fallback download with basic page info
-        const fallbackData = {
-          title: document.title || 'AI Conversation',
-          url: window.location.href,
-          platform: hostname.includes('claude.ai') ? 'Claude.ai' : 'Unknown',
-          exportDate: new Date().toISOString(),
-          totalMessages: 0,
-          messages: [],
-          note: 'No conversation messages could be extracted from this page'
-        };
-
-        this.createDownloadFromData(fallbackData);
-        this.showSuccessToast('Conversation saved as JSON and Markdown!');
-        return;
-      }
-
-      console.log(`🐻 ThreadCub: Successfully extracted ${conversationData.messages.length} messages for download`);
-
-      // Create and download the conversation data
-      this.createDownloadFromData(conversationData);
-      this.showSuccessToast('Conversation saved as JSON and Markdown!');
-
+      this.showToast('Opening print dialog...', 'info');
+      console.log('PageCub: PDF print dialog opened');
     } catch (error) {
-      console.error('🐻 ThreadCub: Download error:', error);
-
-      // Create emergency fallback download
-      const emergencyData = {
-        title: 'ThreadCub Emergency Download',
-        url: window.location.href,
-        platform: 'Unknown',
-        exportDate: new Date().toISOString(),
-        totalMessages: 0,
-        messages: [],
-        error: error.message,
-        note: 'An error occurred during conversation extraction'
-      };
-
-      this.createDownloadFromData(emergencyData);
-      this.showErrorToast();
+      console.error('PageCub: PDF download failed:', error);
+      this.showErrorToast('Download failed: ' + error.message);
     }
   }
 
-  handleChatGPTFlow(continuationPrompt, shareUrl, conversationData) {
-    console.log('🤖 ThreadCub: Starting ENHANCED ChatGPT flow with auto-download...');
-
-    // STEP 1: Auto-download the conversation file in background
-    this.autoDownloadChatGPTFile(conversationData, shareUrl);
-
-    // STEP 2: Create continuation data for cross-tab modal
-    const continuationData = {
-      prompt: this.generateChatGPTContinuationPrompt(),
-      shareUrl: shareUrl,
-      platform: 'ChatGPT',
-      timestamp: Date.now(),
-      messages: conversationData.messages || [],
-      totalMessages: conversationData.total_messages || conversationData.messages?.length || 0,
-      title: conversationData.title || 'Previous Conversation',
-      conversationData: conversationData,
-      chatGPTFlow: true,
-      downloadCompleted: true
-    };
-
-    console.log('🤖 ThreadCub: ChatGPT continuation data prepared');
-
-    // STEP 3: Use storage for modal
-    const canUseChrome = window.StorageService.canUseChromStorage();
-
-    if (canUseChrome) {
-      console.log('🤖 ThreadCub: Using Chrome storage for ChatGPT modal...');
-      window.StorageService.storeWithChrome(continuationData)
-        .then(() => {
-          console.log('🐻 ThreadCub: ChatGPT data stored successfully');
-          const chatGPTUrl = 'https://chatgpt.com/';
-          window.open(chatGPTUrl, '_blank');
-          this.showSuccessToast('File downloaded! Check your new ChatGPT tab.');
-        })
-        .catch(error => {
-          console.log('🤖 ThreadCub: Chrome storage failed, using fallback:', error);
-          this.handleChatGPTFlowFallback(continuationData);
-        });
-    } else {
-      console.log('🤖 ThreadCub: Using ChatGPT fallback method directly');
-      this.handleChatGPTFlowFallback(continuationData);
-    }
+  convertToMarkdown(content) {
+    let md = '---\n';
+    md += `title: ${content.title}\n`;
+    md += `author: ${content.author}\n`;
+    md += `url: ${content.url}\n`;
+    md += `date: ${content.publishDate}\n`;
+    md += `saved: ${content.timestamp}\n`;
+    md += '---\n\n';
+    md += `# ${content.title}\n\n`;
+    md += `**Author:** ${content.author}  \n`;
+    md += `**Source:** ${content.url}  \n`;
+    md += `**Date:** ${content.publishDate}\n\n`;
+    md += '---\n\n';
+    md += content.bodyText;
+    return md;
   }
 
-  autoDownloadChatGPTFile(conversationData, shareUrl) {
-    try {
-      console.log('🤖 ThreadCub: Auto-downloading conversation file for ChatGPT...');
-
-      const conversationJSON = {
-        title: conversationData.title || 'ThreadCub Conversation Continuation',
-        url: conversationData.url || window.location.href,
-        platform: conversationData.platform,
-        exportDate: new Date().toISOString(),
-        totalMessages: conversationData.messages.length,
-        source: 'ThreadCub Browser Extension - ChatGPT Continuation',
-        shareUrl: shareUrl,
-        instructions: 'This file contains our previous conversation. Please review it and continue from where we left off.',
-        messages: conversationData.messages,
-        summary: window.ConversationExtractor.generateQuickSummary(conversationData.messages)
-      };
-
-      const filename = `threadcub-continuation-${new Date().toISOString().split('T')[0]}.json`;
-
-      const blob = new Blob([JSON.stringify(conversationJSON, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.style.display = 'none'; // Keep this inline as it's a utility style
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      console.log('🤖 ThreadCub: ✅ ChatGPT file auto-downloaded:', filename);
-
-    } catch (error) {
-      console.error('🤖 ThreadCub: Error auto-downloading ChatGPT file:', error);
-    }
-  }
-
-  autoDownloadGeminiFile(conversationData, shareUrl) {
-  try {
-    console.log('🟣 ThreadCub: Auto-downloading conversation file for Gemini...');
-    
-    const conversationJSON = {
-      title: conversationData.title || 'ThreadCub Conversation Continuation',
-      url: conversationData.url || window.location.href,
-      platform: conversationData.platform,
-      exportDate: new Date().toISOString(),
-      totalMessages: conversationData.messages.length,
-      source: 'ThreadCub Browser Extension - Gemini Continuation',
-      shareUrl: shareUrl,
-      instructions: 'This file contains our previous conversation. Please review it and continue from where we left off.',
-      messages: conversationData.messages,
-      summary: window.ConversationExtractor.generateQuickSummary(conversationData.messages)
-    };
-    
-    const filename = `threadcub-gemini-continuation-${new Date().toISOString().split('T')[0]}.json`;
-    
-    const blob = new Blob([JSON.stringify(conversationJSON, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    console.log('🟣 ThreadCub: ✅ Gemini file auto-downloaded:', filename);
-    
-  } catch (error) {
-    console.error('🟣 ThreadCub: Error auto-downloading Gemini file:', error);
-  }
-}
-
-  generateChatGPTContinuationPrompt() {
-    return `I'd like to continue our previous conversation. While you can't currently access external URLs, I have our complete conversation history as a file attachment that I'll share now.
-
-Please read through the attached conversation file and provide your assessment of:
-- What we were working on
-- The current status/progress
-- Any next steps or tasks mentioned
-
-Once you've reviewed it, let me know you're ready to continue from where we left off.`;
-  }
-
-  generateGeminiContinuationPrompt() {
-  return `I'd like to continue our previous conversation. I have our complete conversation history as a file that I'll upload now.
-
-Please read through the attached conversation file and provide your assessment of:
-- What we were working on
-- The current status/progress
-- Any next steps or tasks mentioned
-
-Once you've reviewed it, let me know you're ready to continue from where we left off.`;
-}
-
-  handleClaudeFlow(continuationPrompt, shareUrl, conversationData) {
-    console.log('🤖 ThreadCub: Starting Claude flow (API-only, no downloads)...');
-
-    const continuationData = {
-      prompt: continuationPrompt,
-      shareUrl: shareUrl,
-      platform: 'Claude',
-      timestamp: Date.now(),
-      messages: conversationData.messages || [],
-      totalMessages: conversationData.total_messages || conversationData.messages?.length || 0,
-      title: conversationData.title || 'Previous Conversation',
-      conversationData: conversationData,
-      claudeFlow: true,
-      downloadCompleted: false
-    };
-
-    console.log('🤖 ThreadCub: Claude continuation data with message count:', continuationData.totalMessages);
-
-    const canUseChrome = window.StorageService.canUseChromStorage();
-
-    if (canUseChrome) {
-      console.log('🤖 ThreadCub: Using Chrome storage for Claude...');
-      window.StorageService.storeWithChrome(continuationData)
-        .then(() => {
-          console.log('🐻 ThreadCub: Claude data stored successfully');
-          const claudeUrl = 'https://claude.ai/';
-          window.open(claudeUrl, '_blank');
-          this.showSuccessToast('Opening Claude with conversation context...');
-        })
-        .catch(error => {
-          console.log('🤖 ThreadCub: Chrome storage failed, using fallback:', error);
-          window.StorageService.handleClaudeFlowFallback(continuationData);
-        });
-    } else {
-      console.log('🤖 ThreadCub: Using Claude fallback method directly');
-      window.StorageService.handleClaudeFlowFallback(continuationData);
-    }
-  }
-
-  handleGeminiFlow(continuationPrompt, shareUrl, conversationData) {
-  console.log('🟣 ThreadCub: Starting Gemini flow with auto-download...');
-  
-  // STEP 1: Auto-download the conversation file (same as ChatGPT)
-  this.autoDownloadGeminiFile(conversationData, shareUrl);
-  
-  // STEP 2: Create continuation data for cross-tab modal
-  const continuationData = {
-    prompt: this.generateGeminiContinuationPrompt(),
-    shareUrl: shareUrl,
-    platform: 'Gemini',
-    timestamp: Date.now(),
-    messages: conversationData.messages || [],
-    totalMessages: conversationData.total_messages || conversationData.messages?.length || 0,
-    title: conversationData.title || 'Previous Conversation',
-    conversationData: conversationData,
-    geminiFlow: true,
-    downloadCompleted: true
-  };
-  
-  console.log('🟣 ThreadCub: Gemini continuation data prepared');
-  
-  // STEP 3: Use storage for modal
-  const canUseChrome = window.StorageService.canUseChromStorage();
-
-  if (canUseChrome) {
-    console.log('🟣 ThreadCub: Using Chrome storage for Gemini modal...');
-    window.StorageService.storeWithChrome(continuationData)
-      .then(() => {
-        console.log('🟣 ThreadCub: Gemini data stored successfully');
-        const geminiUrl = 'https://gemini.google.com/app';
-        window.open(geminiUrl, '_blank');
-        this.showSuccessToast('File downloaded! Upload it in your new Gemini tab.');
-      })
-      .catch(error => {
-        console.log('🟣 ThreadCub: Chrome storage failed, using fallback:', error);
-        this.handleGeminiFlowFallback(continuationData);
-      });
-  } else {
-    console.log('🟣 ThreadCub: Using Gemini fallback method directly');
-    this.handleGeminiFlowFallback(continuationData);
-  }
-}
-
-  // =============================================================================
-  // GROK FLOW (similar to ChatGPT - with file download)
-  // =============================================================================
-
-  handleGrokFlow(continuationPrompt, shareUrl, conversationData) {
-    console.log('🤖 ThreadCub: Starting Grok flow (URL-based, no downloads - like Claude)...');
-
-    // Create continuation data with URL-based prompt (NO FILE DOWNLOAD!)
-    const continuationData = {
-      prompt: continuationPrompt,  // URL-based prompt from conversation-extractor
-      shareUrl: shareUrl,
-      platform: 'Grok',
-      timestamp: Date.now(),
-      messages: conversationData.messages || [],
-      totalMessages: conversationData.total_messages || conversationData.messages?.length || 0,
-      title: conversationData.title || 'Previous Conversation',
-      conversationData: conversationData,
-      grokFlow: true,
-      downloadCompleted: false  // No file download needed!
-    };
-
-    console.log('🤖 ThreadCub: Grok continuation data prepared (URL-based, no file)');
-
-    // Use storage to pass data to new tab
-    const canUseChrome = window.StorageService.canUseChromStorage();
-
-    if (canUseChrome) {
-      console.log('🤖 ThreadCub: Using Chrome storage for Grok...');
-      window.StorageService.storeWithChrome(continuationData)
-        .then(() => {
-          console.log('🐻 ThreadCub: Grok data stored successfully');
-          const grokUrl = 'https://grok.com/';
-          window.open(grokUrl, '_blank');
-          this.showSuccessToast('Opening Grok with conversation context...');
-        })
-        .catch(error => {
-          console.log('🤖 ThreadCub: Chrome storage failed, using fallback:', error);
-          this.handleGrokFlowFallback(continuationData);
-        });
-    } else {
-      console.log('🤖 ThreadCub: Using Grok fallback method directly');
-      this.handleGrokFlowFallback(continuationData);
-    }
-  }
-
-  autoDownloadGrokFile(conversationData, shareUrl) {
-    try {
-      console.log('🤖 ThreadCub: Auto-downloading conversation file for Grok...');
-
-      const conversationJSON = {
-        title: conversationData.title || 'ThreadCub Conversation Continuation',
-        url: conversationData.url || window.location.href,
-        platform: conversationData.platform,
-        exportDate: new Date().toISOString(),
-        totalMessages: conversationData.messages.length,
-        shareUrl: shareUrl,
-        messages: conversationData.messages,
-        summary: window.ConversationExtractor.generateQuickSummary(conversationData.messages)
-      };
-
-      const filename = `threadcub-grok-continuation-${new Date().toISOString().split('T')[0]}.json`;
-
-      const blob = new Blob([JSON.stringify(conversationJSON, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      console.log('🤖 ThreadCub: ✅ Grok file auto-downloaded:', filename);
-
-    } catch (error) {
-      console.error('🤖 ThreadCub: Error auto-downloading Grok file:', error);
-    }
-  }
-
-  generateGrokContinuationPrompt() {
-    return `I'd like to continue our previous conversation. I have our complete conversation history as a file that I'll share now.
-
-Please read through the attached conversation file and provide your assessment of:
-- What we were working on
-- The current status/progress
-- Any next steps or tasks mentioned
-
-Once you've reviewed it, let me know you're ready to continue from where we left off.`;
-  }
-
-  handleGrokFlowFallback(continuationData) {
-    console.log('🤖 ThreadCub: Using localStorage fallback for Grok...');
-
-    try {
-      localStorage.setItem('threadcub_continuation', JSON.stringify(continuationData));
-      const grokUrl = 'https://grok.com/';
-      window.open(grokUrl, '_blank');
-      this.showSuccessToast('File downloaded! Check your new Grok tab.');
-    } catch (error) {
-      console.error('🤖 ThreadCub: localStorage fallback failed:', error);
-      this.showErrorToast('Failed to prepare continuation data');
-    }
-  }
-
-  // =============================================================================
-  // DEEPSEEK FLOW (similar to ChatGPT - with file download)
-  // =============================================================================
-
-  handleDeepSeekFlow(continuationPrompt, shareUrl, conversationData) {
-    console.log('🔵 ThreadCub: Starting DeepSeek flow with auto-download...');
-    
-    // STEP 1: Auto-download the conversation file (same as ChatGPT/Gemini)
-    this.autoDownloadDeepSeekFile(conversationData, shareUrl);
-    
-    // STEP 2: Create continuation data for cross-tab modal
-    const continuationData = {
-      prompt: continuationPrompt,  // File-based prompt from conversation-extractor
-      shareUrl: shareUrl,
-      platform: 'DeepSeek',
-      timestamp: Date.now(),
-      messages: conversationData.messages || [],
-      totalMessages: conversationData.total_messages || conversationData.messages?.length || 0,
-      title: conversationData.title || 'Previous Conversation',
-      conversationData: conversationData,
-      deepseekFlow: true,
-      downloadCompleted: true  // File was downloaded!
-    };
-    
-    console.log('🔵 ThreadCub: DeepSeek continuation data prepared');
-    
-    // STEP 3: Use storage for modal
-    const canUseChrome = window.StorageService.canUseChromStorage();
-
-    if (canUseChrome) {
-      console.log('🔵 ThreadCub: Using Chrome storage for DeepSeek modal...');
-      window.StorageService.storeWithChrome(continuationData)
-        .then(() => {
-          console.log('🐻 ThreadCub: DeepSeek data stored successfully');
-          const deepseekUrl = 'https://chat.deepseek.com/';
-          window.open(deepseekUrl, '_blank');
-          this.showSuccessToast('File downloaded! Upload it in your new DeepSeek tab.');
-        })
-        .catch(error => {
-          console.log('🔵 ThreadCub: Chrome storage failed, using fallback:', error);
-          this.handleDeepSeekFlowFallback(continuationData);
-        });
-    } else {
-      console.log('🔵 ThreadCub: Using DeepSeek fallback method directly');
-      this.handleDeepSeekFlowFallback(continuationData);
-    }
-  }
-
-  autoDownloadDeepSeekFile(conversationData, shareUrl) {
-    try {
-      console.log('🔵 ThreadCub: Auto-downloading conversation file for DeepSeek...');
-
-      const conversationJSON = {
-        title: conversationData.title || 'ThreadCub Conversation Continuation',
-        url: conversationData.url || window.location.href,
-        platform: conversationData.platform,
-        exportDate: new Date().toISOString(),
-        totalMessages: conversationData.messages.length,
-        shareUrl: shareUrl,
-        messages: conversationData.messages,
-        summary: window.ConversationExtractor.generateQuickSummary(conversationData.messages)
-      };
-
-      const filename = `threadcub-deepseek-continuation-${new Date().toISOString().split('T')[0]}.json`;
-
-      const blob = new Blob([JSON.stringify(conversationJSON, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      console.log('🔵 ThreadCub: ✅ DeepSeek file auto-downloaded:', filename);
-
-    } catch (error) {
-      console.error('🔵 ThreadCub: Error auto-downloading DeepSeek file:', error);
-    }
-  }
-
-  generateDeepSeekContinuationPrompt() {
-    return `I'd like to continue our previous conversation. I have our complete conversation history as a file that I'll share now.
-
-Please read through the attached conversation file and provide your assessment of:
-- What we were working on
-- The current status/progress
-- Any next steps or tasks mentioned
-
-Once you've reviewed it, let me know you're ready to continue from where we left off.`;
-  }
-
-  handleDeepSeekFlowFallback(continuationData) {
-    console.log('🔵 ThreadCub: Using localStorage fallback for DeepSeek...');
-
-    try {
-      localStorage.setItem('threadcub_continuation', JSON.stringify(continuationData));
-      const deepseekUrl = 'https://chat.deepseek.com/';
-      window.open(deepseekUrl, '_blank');
-      this.showSuccessToast('File downloaded! Check your new DeepSeek tab.');
-    } catch (error) {
-      console.error('🔵 ThreadCub: localStorage fallback failed:', error);
-      this.showErrorToast('Failed to prepare continuation data');
-    }
-  }
-
-  handleDirectContinuation(conversationData) {
-    console.log('🐻 ThreadCub: Handling direct continuation without API save...');
-
-    // Create a fallback share URL
-    const fallbackShareUrl = `https://threadcub.com/fallback/${Date.now()}`;
-
-    // Generate a simple continuation prompt
-    const summary = window.ConversationExtractor.generateQuickSummary(conversationData.messages);
-    const minimalPrompt = window.ConversationExtractor.generateContinuationPrompt(summary, fallbackShareUrl, conversationData.platform, conversationData);
-
-    // Route to appropriate platform flow
-    const targetPlatform = window.ConversationExtractor.getTargetPlatformFromCurrentUrl();
-
-    // ADD DEBUG LINES HERE
-    console.log('🔍 DEBUG LOCATION 1: Current hostname:', window.location.hostname);
-    console.log('🔍 DEBUG LOCATION 1: targetPlatform detected as:', targetPlatform);
-    console.log('🔍 DEBUG LOCATION 1: About to route to platform...');
-
-    if (targetPlatform === 'chatgpt') {
-      console.log('🤖 ThreadCub: Routing to ChatGPT flow (with file download)');
-      this.handleChatGPTFlow(minimalPrompt, fallbackShareUrl, conversationData);
-    } else if (targetPlatform === 'claude') {
-      console.log('🤖 ThreadCub: Routing to Claude flow (no file download)');
-      this.handleClaudeFlow(minimalPrompt, fallbackShareUrl, conversationData);
-    } else if (targetPlatform === 'gemini') {
-      console.log('🤖 ThreadCub: Routing to Gemini flow (with file download)');
-      this.handleGeminiFlow(minimalPrompt, fallbackShareUrl, conversationData);
-    } else if (targetPlatform === 'grok') {
-      console.log('🤖 ThreadCub: Routing to Grok flow (with file download)');
-      this.handleGrokFlow(minimalPrompt, fallbackShareUrl, conversationData);
-    } else if (targetPlatform === 'deepseek') {
-      console.log('🔵 ThreadCub: Routing to DeepSeek flow (with file download)');
-      this.handleDeepSeekFlow(minimalPrompt, fallbackShareUrl, conversationData);
-    } else {
-      console.log('🤖 ThreadCub: Unknown platform, defaulting to ChatGPT flow');
-      this.handleChatGPTFlow(minimalPrompt, fallbackShareUrl, conversationData);
-    }
-
-    this.showSuccessToast('Continuing conversation (offline mode)');
-  }
-
-  // ===== STORAGE & FALLBACK METHODS =====
-  // canUseChromStorage() removed - now using window.StorageService.canUseChromStorage()
-  // storeWithChrome() removed - now using window.StorageService.storeWithChrome()
-  // handleClaudeFlowFallback() removed - now using window.StorageService.handleClaudeFlowFallback()
-
-  // Platform-specific fallback methods (kept - not in StorageService)
-  handleChatGPTFlowFallback(continuationData) {
-    console.log('🤖 ThreadCub: Using localStorage fallback for ChatGPT...');
-
-    try {
-      localStorage.setItem('threadcubContinuationData', JSON.stringify(continuationData));
-      console.log('🔧 ChatGPT Fallback: Data stored in localStorage');
-
-      const chatGPTUrl = 'https://chatgpt.com/';
-      window.open(chatGPTUrl, '_blank');
-      this.showSuccessToast('File downloaded! Check your new ChatGPT tab.');
-
-    } catch (error) {
-      console.error('🔧 ChatGPT Fallback: localStorage failed:', error);
-    }
-  }
-
-  handleGeminiFlowFallback(continuationData) {
-  console.log('🟣 ThreadCub: Using localStorage fallback for Gemini...');
-  
-  try {
-    localStorage.setItem('threadcubContinuationData', JSON.stringify(continuationData));
-    console.log('🔧 Gemini Fallback: Data stored in localStorage');
-    
-    const geminiUrl = 'https://gemini.google.com/app';
-    window.open(geminiUrl, '_blank');
-    this.showSuccessToast('File downloaded! Upload it in your new Gemini tab.');
-    
-  } catch (error) {
-    console.error('🔧 Gemini Fallback: localStorage failed:', error);
-  }
-}
-
-  // ===== DOWNLOAD METHODS =====
-  createDownloadFromData(conversationData) {
-    try {
-      const tagsData = {
-        title: conversationData.title || 'ThreadCub Conversation',
-        url: conversationData.url || window.location.href,
-        platform: conversationData.platform || 'Unknown',
-        exportDate: new Date().toISOString(),
-        totalMessages: conversationData.messages ? conversationData.messages.length : 0,
-        messages: conversationData.messages || []
-      };
-
-      const filename = window.Utilities.generateSmartFilename(tagsData); // Use tagsData for filename
-      const blob = new Blob([JSON.stringify(tagsData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      console.log('🐻 ThreadCub: JSON download completed with filename:', filename);
-
-      // Download Markdown after a brief delay for browser compatibility
-      setTimeout(() => this.downloadMarkdown(tagsData), 200);
-
-    } catch (error) {
-      console.error('🐻 ThreadCub: Error in createDownloadFromData:', error);
-      throw error;
-    }
+  sanitizeFilename(title) {
+    return title
+      .replace(/[^a-z0-9]/gi, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+      .toLowerCase()
+      .substring(0, 100);
   }
 
 }
 
 // Make the class globally available
-window.ThreadCubFloatingButton = ThreadCubFloatingButton;
+window.PageCubFloatingButton = PageCubFloatingButton;
+// Legacy alias for compatibility
+window.ThreadCubFloatingButton = PageCubFloatingButton;
 
-console.log('✅ ThreadCubFloatingButton defined:', typeof window.ThreadCubFloatingButton);
+console.log('PageCubFloatingButton defined:', typeof window.PageCubFloatingButton);
 
 // Add message listener for popup communication
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    console.log('🐻 ThreadCub: Received message:', request);
+    console.log('PageCub: Received message:', request);
 
     try {
         if (request.action === 'checkButtonStatus') {
-            sendResponse({ success: true, exists: !!window.threadcubButton });
+            sendResponse({ success: true, exists: !!window.pagecubButton });
             return;
         }
 
         if (request.action === 'hideFloatingButton') {
-            if (window.threadcubButton && window.threadcubButton.button) {
-                window.threadcubButton.button.style.display = 'none';
+            if (window.pagecubButton && window.pagecubButton.button) {
+                window.pagecubButton.button.style.display = 'none';
                 sendResponse({ success: true });
             } else {
                 sendResponse({ success: false, error: 'Button not found' });
@@ -1440,8 +832,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
 
         if (request.action === 'showFloatingButton') {
-            if (window.threadcubButton && window.threadcubButton.button) {
-                window.threadcubButton.button.style.display = 'flex';
+            if (window.pagecubButton && window.pagecubButton.button) {
+                window.pagecubButton.button.style.display = 'flex';
                 sendResponse({ success: true });
             } else {
                 sendResponse({ success: false, error: 'Button not found' });
@@ -1452,7 +844,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         sendResponse({ success: false, error: 'Unknown action' });
 
     } catch (error) {
-        console.error('🐻 ThreadCub: Message handler error:', error);
+        console.error('PageCub: Message handler error:', error);
         sendResponse({ success: false, error: error.message });
     }
 });
