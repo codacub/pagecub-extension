@@ -7,7 +7,10 @@
 // =============================================================================
 const ALLOWED_SITES = [
   // Substack - newsletter platform
-  { pattern: /\.substack\.com$/i, name: 'Substack' },
+  // Matches: threadcub.substack.com, *.substack.com
+  { pattern: /\.substack\.com$/i, name: 'Substack subdomain' },
+  // Matches: substack.com (main domain for /home/post/* URLs)
+  { pattern: /^substack\.com$/i, name: 'Substack main' },
 
   // Medium - blogging platform
   { pattern: /^medium\.com$/i, name: 'Medium' },

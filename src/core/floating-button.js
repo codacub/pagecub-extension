@@ -802,14 +802,28 @@ class PageCubFloatingButton {
    * @returns {string} The extracted slug for use as filename
    */
   getUrlSlug() {
-    const url = window.location.href;
     const pathname = window.location.pathname;
 
     try {
-      // Substack pattern: /p/article-slug or /p/article-slug?...
-      const substackMatch = pathname.match(/\/p\/([^/?#]+)/);
-      if (substackMatch) {
-        return substackMatch[1];
+      // Substack subdomain pattern: /p/article-slug or /p/article-slug?...
+      const substackSubdomainMatch = pathname.match(/\/p\/([^/?#]+)/);
+      if (substackSubdomainMatch) {
+        return substackSubdomainMatch[1];
+      }
+
+      // Substack main domain pattern: /home/post/p-123456-article-slug
+      // Extract just the article slug part (after p-ID-)
+      const substackMainMatch = pathname.match(/\/home\/post\/p-\d+-(.+)/);
+      if (substackMainMatch) {
+        return substackMainMatch[1];
+      }
+
+      // Substack main domain fallback: /home/post/article-slug (if format varies)
+      const substackHomeMatch = pathname.match(/\/home\/post\/([^/?#]+)/);
+      if (substackHomeMatch) {
+        // Remove any leading ID prefix like "p-123456-"
+        const slug = substackHomeMatch[1].replace(/^p-\d+-/, '');
+        return slug;
       }
 
       // Medium pattern: /@username/article-slug-abc123 or /article-slug-abc123
