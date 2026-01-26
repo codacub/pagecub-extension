@@ -730,7 +730,8 @@ class PageCubFloatingButton {
       // Wait for DOM to update
       await new Promise(resolve => setTimeout(resolve, 150));
 
-      this.showToast('Generating PDF...', 'info');
+      // NOTE: Don't show toast here - it would appear in the captured PDF
+      // The success/error toast will be shown after the capture is complete
 
       // Get the page title for the filename
       const pageTitle = document.title || 'page';

@@ -355,6 +355,24 @@ chrome.runtime.onStartup.addListener(() => {
 console.log('🐻 PageCub background script loaded and ready');
 
 // === SECTION 8: PDF Generation using Chrome Debugger API ===
+//
+// IMPORTANT NOTE ABOUT DEBUGGER BANNER:
+// When using chrome.debugger.attach(), Chrome displays a security banner:
+// "'ExtensionName' started debugging this browser"
+//
+// This is Chrome's built-in security feature and CANNOT be customized or disabled.
+// The extension name shown comes from the "name" field in manifest.json.
+//
+// This behavior is by design - Chrome wants users to know when debugging is active.
+// The chrome.debugger.attach() API has no options to customize this message.
+//
+// Alternative approaches that don't trigger this banner:
+// 1. window.print() - Opens browser's print dialog (requires user interaction)
+// 2. html2canvas + jsPDF - Client-side rendering (quality tradeoffs, no background images)
+//
+// We use the debugger API because it produces the highest quality PDF output
+// that matches what the browser renders, including CSS, fonts, and layout.
+//
 
 // Default PDF settings (will be adjusted dynamically based on page width)
 const DEFAULT_PDF_SETTINGS = {
@@ -577,6 +595,17 @@ async function warmUpPage(tabId) {
 function warmUpPageContent() {
   return new Promise(async (resolve) => {
     console.log('📄 PageCub: Warming up page for PDF...');
+
+    // Hide any toast notifications so they don't appear in the PDF
+    const toasts = document.querySelectorAll('.threadcub-toast, [class*="toast"], [class*="notification"]');
+    const hiddenElements = [];
+    toasts.forEach(toast => {
+      if (toast.style.display !== 'none') {
+        hiddenElements.push({ element: toast, originalDisplay: toast.style.display });
+        toast.style.display = 'none';
+      }
+    });
+    console.log('📄 PageCub: Hidden', hiddenElements.length, 'toast/notification elements');
 
     // Trigger all lazy-loaded images
     const images = document.querySelectorAll('img[data-src], img[loading="lazy"], img.lazy');
