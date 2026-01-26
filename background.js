@@ -356,18 +356,19 @@ console.log('🐻 PageCub background script loaded and ready');
 
 // === SECTION 8: PDF Generation using Chrome Debugger API ===
 
-// PDF settings for A4 paper with reasonable margins
-const PDF_SETTINGS = {
+// Default PDF settings (will be adjusted dynamically based on page width)
+const DEFAULT_PDF_SETTINGS = {
   printBackground: true,
   landscape: false,
-  scale: 1.0,
-  paperWidth: 8.27,   // A4 width in inches
-  paperHeight: 11.69, // A4 height in inches
-  marginTop: 0.4,
-  marginBottom: 0.4,
-  marginLeft: 0.4,
-  marginRight: 0.4,
-  displayHeaderFooter: false
+  scale: 0.85,        // Slightly reduced scale for better fit
+  paperWidth: 8.5,    // US Letter width in inches (default)
+  paperHeight: 11,    // US Letter height in inches
+  marginTop: 0.3,
+  marginBottom: 0.3,
+  marginLeft: 0.3,
+  marginRight: 0.3,
+  displayHeaderFooter: false,
+  preferCSSPageSize: false
 };
 
 async function handleGeneratePDF(request, sender, sendResponse) {
@@ -469,10 +470,83 @@ function detachDebugger(target) {
   });
 }
 
-// Generate PDF using Page.printToPDF
-function generatePDFWithDebugger(target) {
+// Get page dimensions from the webpage
+function getPageDimensions(target) {
   return new Promise((resolve, reject) => {
-    chrome.debugger.sendCommand(target, 'Page.printToPDF', PDF_SETTINGS, (result) => {
+    chrome.debugger.sendCommand(target, 'Runtime.evaluate', {
+      expression: `({
+        scrollWidth: Math.max(document.body.scrollWidth, document.documentElement.scrollWidth),
+        scrollHeight: Math.max(document.body.scrollHeight, document.documentElement.scrollHeight),
+        clientWidth: document.documentElement.clientWidth,
+        clientHeight: document.documentElement.clientHeight
+      })`
+    }, (result) => {
+      if (chrome.runtime.lastError) {
+        console.log('📄 Background: Could not get page dimensions, using defaults');
+        resolve(null);
+      } else if (result && result.result && result.result.value) {
+        resolve(result.result.value);
+      } else {
+        resolve(null);
+      }
+    });
+  });
+}
+
+// Calculate optimal PDF settings based on page dimensions
+function calculatePDFSettings(pageDimensions) {
+  const settings = { ...DEFAULT_PDF_SETTINGS };
+
+  if (!pageDimensions) {
+    console.log('📄 Background: Using default PDF settings');
+    return settings;
+  }
+
+  const { scrollWidth, clientWidth } = pageDimensions;
+  console.log('📄 Background: Page dimensions - scrollWidth:', scrollWidth, 'clientWidth:', clientWidth);
+
+  // Calculate effective page width in pixels
+  const pageWidthPx = Math.max(scrollWidth, clientWidth, 800);
+
+  // Convert to inches (96 DPI is standard for web)
+  const pageWidthInches = pageWidthPx / 96;
+
+  // Determine if page is wider than standard paper
+  const minWidth = 8.5; // US Letter width
+  const maxWidth = 14;  // Maximum reasonable width
+
+  if (pageWidthInches > minWidth) {
+    // Page is wider than standard paper, adjust dimensions
+    const adjustedWidth = Math.min(pageWidthInches + 0.6, maxWidth); // Add margin buffer
+    settings.paperWidth = adjustedWidth;
+    settings.scale = 0.8; // Reduce scale for wider pages
+    console.log('📄 Background: Adjusted PDF width to', adjustedWidth.toFixed(2), 'inches');
+  } else {
+    // Standard width page
+    settings.paperWidth = minWidth;
+    settings.scale = 0.85;
+  }
+
+  // Use landscape for very wide pages
+  if (pageWidthInches > 11) {
+    settings.landscape = true;
+    console.log('📄 Background: Using landscape orientation for wide page');
+  }
+
+  return settings;
+}
+
+// Generate PDF using Page.printToPDF with dynamic width
+async function generatePDFWithDebugger(target) {
+  // First, get the page dimensions
+  const pageDimensions = await getPageDimensions(target);
+
+  // Calculate optimal PDF settings
+  const pdfSettings = calculatePDFSettings(pageDimensions);
+  console.log('📄 Background: PDF settings:', JSON.stringify(pdfSettings));
+
+  return new Promise((resolve, reject) => {
+    chrome.debugger.sendCommand(target, 'Page.printToPDF', pdfSettings, (result) => {
       if (chrome.runtime.lastError) {
         reject(new Error(chrome.runtime.lastError.message));
       } else if (result && result.data) {
