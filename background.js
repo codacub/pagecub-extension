@@ -391,7 +391,7 @@ const DEFAULT_PDF_SETTINGS = {
 
 async function handleGeneratePDF(request, sender, sendResponse) {
   const tabId = sender.tab?.id;
-  const pageTitle = request.title || 'page';
+  const pageSlug = request.slug || 'page';
 
   if (!tabId) {
     sendResponse({ success: false, error: 'No tab ID available' });
@@ -424,12 +424,13 @@ async function handleGeneratePDF(request, sender, sendResponse) {
 
     // Step 5: Download PDF
     console.log('📄 Background: Downloading PDF...');
-    const filename = sanitizeFilename(pageTitle) + '.pdf';
+    // Use the URL slug directly - it's already clean from the content script
+    const filename = pageSlug + '.pdf';
     const dataUrl = 'data:application/pdf;base64,' + pdfData;
 
     chrome.downloads.download({
       url: dataUrl,
-      filename: 'pagecub-' + filename,
+      filename: filename,
       saveAs: false
     }, (downloadId) => {
       if (chrome.runtime.lastError) {

@@ -690,8 +690,8 @@ class PageCubFloatingButton {
       // Convert to Markdown with frontmatter
       const markdown = this.convertToMarkdown(content);
 
-      // Generate filename
-      const filename = this.sanitizeFilename(content.title) + '.md';
+      // Generate filename from URL slug (cleaner than title)
+      const filename = this.getUrlSlug() + '.md';
 
       // Download the file
       const blob = new Blob([markdown], { type: 'text/markdown' });
@@ -733,15 +733,15 @@ class PageCubFloatingButton {
       // NOTE: Don't show toast here - it would appear in the captured PDF
       // The success/error toast will be shown after the capture is complete
 
-      // Get the page title for the filename
-      const pageTitle = document.title || 'page';
+      // Get the URL slug for the filename (cleaner than page title)
+      const urlSlug = this.getUrlSlug();
 
       console.log('PageCub: Requesting PDF generation via background script...');
 
       // Send message to background script to generate PDF using Chrome's debugger API
       chrome.runtime.sendMessage({
         action: 'generatePDF',
-        title: pageTitle
+        slug: urlSlug
       }, (response) => {
         // Always show the button again after PDF generation
         showButtonAfter();
@@ -794,6 +794,50 @@ class PageCubFloatingButton {
       .replace(/^-|-$/g, '')
       .toLowerCase()
       .substring(0, 100);
+  }
+
+  /**
+   * Extract a clean slug from the current page URL
+   * Handles Substack (/p/slug), Medium, and general URL patterns
+   * @returns {string} The extracted slug for use as filename
+   */
+  getUrlSlug() {
+    const url = window.location.href;
+    const pathname = window.location.pathname;
+
+    try {
+      // Substack pattern: /p/article-slug or /p/article-slug?...
+      const substackMatch = pathname.match(/\/p\/([^/?#]+)/);
+      if (substackMatch) {
+        return substackMatch[1];
+      }
+
+      // Medium pattern: /@username/article-slug-abc123 or /article-slug-abc123
+      // Remove the hash ID at the end (usually 12 hex chars)
+      const mediumMatch = pathname.match(/\/(?:@[^/]+\/)?([^/?#]+?)(?:-[a-f0-9]{8,12})?$/i);
+      if (mediumMatch && mediumMatch[1]) {
+        return mediumMatch[1];
+      }
+
+      // General fallback: get the last path segment
+      const segments = pathname.split('/').filter(s => s.length > 0);
+      if (segments.length > 0) {
+        // Remove common prefixes like 'p', 'post', 'article', 'blog'
+        const lastSegment = segments[segments.length - 1];
+        // Remove query strings and hash
+        const cleanSegment = lastSegment.split(/[?#]/)[0];
+        if (cleanSegment && cleanSegment.length > 0) {
+          return cleanSegment;
+        }
+      }
+
+      // Ultimate fallback: use sanitized hostname + timestamp
+      return window.location.hostname.replace(/\./g, '-') + '-' + Date.now();
+
+    } catch (error) {
+      console.error('PageCub: Error extracting URL slug:', error);
+      return 'page-' + Date.now();
+    }
   }
 
 }
