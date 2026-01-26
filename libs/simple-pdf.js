@@ -1,54 +1,105 @@
 /**
- * SimplePDF - Minimal PDF generator for PageCub
- * Creates basic text-based PDF documents without external dependencies
+ * PageCub PDF Generator
+ * Creates well-formatted PDF documents from webpage content
+ * Uses improved text handling and proper character encoding
  */
 
-class SimplePDF {
+class PagePDF {
   constructor() {
-    this.pages = [];
-    this.currentPage = null;
-    this.fontSize = 11;
-    this.lineHeight = 14;
+    this.pageWidth = 595.28;  // A4 width in points
+    this.pageHeight = 841.89; // A4 height in points
     this.margin = 50;
-    this.pageWidth = 595; // A4 width in points
-    this.pageHeight = 842; // A4 height in points
+    this.contentWidth = this.pageWidth - (2 * this.margin);
+    this.currentY = this.pageHeight - this.margin;
+    this.fontSize = 11;
+    this.lineHeight = 16;
+    this.objects = [];
+    this.pageContents = [];
+    this.currentPageContent = '';
+    this.fontMap = {};
   }
 
-  // Escape special PDF characters and handle encoding
-  escape(text) {
+  // Convert Unicode string to PDF-safe string (WinAnsiEncoding)
+  encodeText(text) {
     if (!text) return '';
-    return String(text)
-      .replace(/\\/g, '\\\\')
-      .replace(/\(/g, '\\(')
-      .replace(/\)/g, '\\)')
-      .replace(/[\x00-\x1f\x7f-\xff]/g, char => {
-        // Convert non-ASCII to octal escape
-        return '\\' + char.charCodeAt(0).toString(8).padStart(3, '0');
-      });
+
+    // Character mapping for common Unicode chars to WinAnsi
+    const charMap = {
+      '\u2018': "'",   // Left single quote
+      '\u2019': "'",   // Right single quote
+      '\u201C': '"',   // Left double quote
+      '\u201D': '"',   // Right double quote
+      '\u2014': '--',  // Em dash
+      '\u2013': '-',   // En dash
+      '\u2026': '...', // Ellipsis
+      '\u00A0': ' ',   // Non-breaking space
+      '\u2022': '*',   // Bullet
+      '\u00B7': '*',   // Middle dot
+      '\u2023': '>',   // Triangle bullet
+      '\u2043': '-',   // Hyphen bullet
+      '\u00AB': '<<',  // Left guillemet
+      '\u00BB': '>>',  // Right guillemet
+      '\u2039': '<',   // Single left guillemet
+      '\u203A': '>',   // Single right guillemet
+      '\u201A': ',',   // Single low quote
+      '\u201E': ',,',  // Double low quote
+      '\u2020': '+',   // Dagger
+      '\u2021': '++',  // Double dagger
+      '\u00AE': '(R)', // Registered
+      '\u00A9': '(C)', // Copyright
+      '\u2122': '(TM)',// Trademark
+      '\u00B0': 'deg', // Degree
+      '\u00BC': '1/4', // One quarter
+      '\u00BD': '1/2', // One half
+      '\u00BE': '3/4', // Three quarters
+    };
+
+    let result = '';
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      const code = char.charCodeAt(0);
+
+      if (charMap[char]) {
+        result += charMap[char];
+      } else if (code < 128) {
+        // ASCII - safe as-is, but escape PDF special chars
+        if (char === '\\') result += '\\\\';
+        else if (char === '(') result += '\\(';
+        else if (char === ')') result += '\\)';
+        else if (char === '\r') result += '';
+        else if (char === '\n') result += '';
+        else if (char === '\t') result += '    ';
+        else result += char;
+      } else if (code >= 128 && code <= 255) {
+        // Extended ASCII - use octal escape
+        result += '\\' + code.toString(8).padStart(3, '0');
+      } else {
+        // Other Unicode - try to transliterate or skip
+        result += '?';
+      }
+    }
+    return result;
   }
 
-  // Word wrap text to fit within content width
-  wrapText(text, maxCharsPerLine = 90) {
+  // Word wrap text
+  wrapText(text, maxWidth = 85) {
     if (!text) return [];
-    const words = text.split(/\s+/);
+    const words = text.split(/\s+/).filter(w => w.length > 0);
     const lines = [];
     let currentLine = '';
 
     for (const word of words) {
-      if (!word) continue;
       const testLine = currentLine ? currentLine + ' ' + word : word;
-      if (testLine.length <= maxCharsPerLine) {
+      if (testLine.length <= maxWidth) {
         currentLine = testLine;
       } else {
         if (currentLine) lines.push(currentLine);
-        // Handle very long words by breaking them
-        if (word.length > maxCharsPerLine) {
-          let remaining = word;
-          while (remaining.length > maxCharsPerLine) {
-            lines.push(remaining.substring(0, maxCharsPerLine));
-            remaining = remaining.substring(maxCharsPerLine);
+        // Handle very long words
+        if (word.length > maxWidth) {
+          for (let i = 0; i < word.length; i += maxWidth) {
+            lines.push(word.substring(i, Math.min(i + maxWidth, word.length)));
           }
-          currentLine = remaining;
+          currentLine = '';
         } else {
           currentLine = word;
         }
@@ -58,184 +109,204 @@ class SimplePDF {
     return lines;
   }
 
-  // Add a new page
-  addPage() {
-    this.currentPage = {
-      content: [],
-      y: this.pageHeight - this.margin
-    };
-    this.pages.push(this.currentPage);
+  // Add text at position
+  addText(text, x, y, options = {}) {
+    const fontSize = options.fontSize || this.fontSize;
+    const bold = options.bold || false;
+    const gray = options.gray || false;
+
+    const fontRef = bold ? '/F2' : '/F1';
+    const colorCmd = gray ? '0.4 0.4 0.4 rg' : '0 0 0 rg';
+    const encoded = this.encodeText(text);
+
+    this.currentPageContent += `${colorCmd}\n`;
+    this.currentPageContent += `BT\n`;
+    this.currentPageContent += `${fontRef} ${fontSize} Tf\n`;
+    this.currentPageContent += `${x.toFixed(2)} ${y.toFixed(2)} Td\n`;
+    this.currentPageContent += `(${encoded}) Tj\n`;
+    this.currentPageContent += `ET\n`;
   }
 
-  // Add title text
+  // Add a line
+  addLine(x1, y1, x2, y2) {
+    this.currentPageContent += '0.8 0.8 0.8 RG\n';
+    this.currentPageContent += '0.5 w\n';
+    this.currentPageContent += `${x1.toFixed(2)} ${y1.toFixed(2)} m\n`;
+    this.currentPageContent += `${x2.toFixed(2)} ${y2.toFixed(2)} l\n`;
+    this.currentPageContent += 'S\n';
+  }
+
+  // Start new page
+  newPage() {
+    if (this.currentPageContent) {
+      this.pageContents.push(this.currentPageContent);
+    }
+    this.currentPageContent = '';
+    this.currentY = this.pageHeight - this.margin;
+  }
+
+  // Check if need new page
+  checkNewPage(neededHeight = 30) {
+    if (this.currentY < this.margin + neededHeight) {
+      this.newPage();
+      return true;
+    }
+    return false;
+  }
+
+  // Add title
   addTitle(text) {
-    if (!this.currentPage) this.addPage();
-    this.currentPage.content.push({
-      type: 'text',
-      text: this.escape(text),
-      x: this.margin,
-      y: this.currentPage.y,
-      fontSize: 16,
-      bold: true
-    });
-    this.currentPage.y -= 28;
+    this.checkNewPage(40);
+    const lines = this.wrapText(text, 70);
+    for (const line of lines) {
+      this.addText(line, this.margin, this.currentY, { fontSize: 18, bold: true });
+      this.currentY -= 24;
+    }
+    this.currentY -= 10;
   }
 
-  // Add metadata line
+  // Add metadata
   addMeta(label, value) {
-    if (!this.currentPage) this.addPage();
-    this.currentPage.content.push({
-      type: 'text',
-      text: this.escape(`${label}: ${value}`),
-      x: this.margin,
-      y: this.currentPage.y,
-      fontSize: 9,
-      gray: true
-    });
-    this.currentPage.y -= 12;
+    this.checkNewPage();
+    const text = `${label}: ${value}`;
+    const truncated = text.length > 100 ? text.substring(0, 97) + '...' : text;
+    this.addText(truncated, this.margin, this.currentY, { fontSize: 9, gray: true });
+    this.currentY -= 14;
   }
 
-  // Add a horizontal line
-  addLine() {
-    if (!this.currentPage) this.addPage();
-    this.currentPage.content.push({
-      type: 'line',
-      x1: this.margin,
-      y1: this.currentPage.y,
-      x2: this.pageWidth - this.margin,
-      y2: this.currentPage.y
-    });
-    this.currentPage.y -= 15;
+  // Add separator line
+  addSeparator() {
+    this.checkNewPage();
+    this.addLine(this.margin, this.currentY, this.pageWidth - this.margin, this.currentY);
+    this.currentY -= 20;
   }
 
-  // Add body text with word wrap
-  addText(text) {
-    if (!this.currentPage) this.addPage();
+  // Add heading
+  addHeading(text, level = 2) {
+    this.currentY -= 10;
+    this.checkNewPage(30);
+    const fontSize = level === 1 ? 16 : (level === 2 ? 14 : 12);
+    const lines = this.wrapText(text, level === 1 ? 65 : 75);
+    for (const line of lines) {
+      this.addText(line, this.margin, this.currentY, { fontSize, bold: true });
+      this.currentY -= fontSize + 6;
+    }
+    this.currentY -= 4;
+  }
+
+  // Add paragraph
+  addParagraph(text) {
+    if (!text || !text.trim()) {
+      this.currentY -= this.lineHeight * 0.5;
+      return;
+    }
+
+    const lines = this.wrapText(text.trim(), 90);
+    for (const line of lines) {
+      this.checkNewPage();
+      this.addText(line, this.margin, this.currentY, { fontSize: this.fontSize });
+      this.currentY -= this.lineHeight;
+    }
+    this.currentY -= this.lineHeight * 0.3;
+  }
+
+  // Add body text (handles multiple paragraphs)
+  addBody(text) {
     if (!text) return;
 
-    const paragraphs = text.split('\n');
+    // Split by double newlines for paragraphs, single newlines within paragraphs
+    const paragraphs = text.split(/\n\s*\n/);
 
-    for (const paragraph of paragraphs) {
-      if (!paragraph || paragraph.trim() === '') {
-        this.currentPage.y -= this.lineHeight * 0.5;
-        continue;
-      }
+    for (const para of paragraphs) {
+      if (!para.trim()) continue;
 
-      const lines = this.wrapText(paragraph.trim(), 90);
-
-      for (const line of lines) {
-        // Check if we need a new page
-        if (this.currentPage.y < this.margin + 30) {
-          this.addPage();
-        }
-
-        this.currentPage.content.push({
-          type: 'text',
-          text: this.escape(line),
-          x: this.margin,
-          y: this.currentPage.y,
-          fontSize: this.fontSize
-        });
-        this.currentPage.y -= this.lineHeight;
+      // Check if this looks like a heading (short, possibly uppercase or starts with #)
+      const trimmed = para.trim();
+      if (trimmed.startsWith('#')) {
+        const level = (trimmed.match(/^#+/) || [''])[0].length;
+        const headingText = trimmed.replace(/^#+\s*/, '');
+        this.addHeading(headingText, Math.min(level, 3));
+      } else if (trimmed.length < 80 && /^[A-Z][^.!?]*$/.test(trimmed)) {
+        // Looks like a heading (short, starts with capital, no ending punctuation)
+        this.addHeading(trimmed, 2);
+      } else {
+        // Regular paragraph - join single newlines
+        const normalized = para.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+        this.addParagraph(normalized);
       }
     }
   }
 
-  // Generate valid PDF content
-  generateClean() {
-    // Build all objects first, then calculate offsets
-    const objectContents = [];
-
-    // We'll build: Catalog, Pages, Font1, Font2, then for each page: Stream, Page
-    // Object 1: Catalog (references Pages at object 2)
-    objectContents.push('<< /Type /Catalog /Pages 2 0 R >>');
-
-    // Object 2: Pages - placeholder, we'll fill in the Kids later
-    objectContents.push(null); // Will be replaced
-
-    // Object 3: Font (Helvetica)
-    objectContents.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
-
-    // Object 4: Font Bold (Helvetica-Bold)
-    objectContents.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
-
-    const pageObjectNumbers = [];
-    let nextObjNum = 5;
-
-    // Generate each page
-    for (const page of this.pages) {
-      // Build content stream
-      let stream = '';
-
-      for (const item of page.content) {
-        if (item.type === 'text') {
-          // Set color
-          if (item.gray) {
-            stream += '0.4 0.4 0.4 rg\n';
-          } else {
-            stream += '0 0 0 rg\n';
-          }
-          // Set font
-          const fontRef = item.bold ? '/F2' : '/F1';
-          stream += `BT\n`;
-          stream += `${fontRef} ${item.fontSize} Tf\n`;
-          stream += `${item.x} ${item.y} Td\n`;
-          stream += `(${item.text}) Tj\n`;
-          stream += `ET\n`;
-        } else if (item.type === 'line') {
-          stream += '0.8 0.8 0.8 RG\n';
-          stream += '0.5 w\n';
-          stream += `${item.x1} ${item.y1} m\n`;
-          stream += `${item.x2} ${item.y2} l\n`;
-          stream += 'S\n';
-        }
-      }
-
-      // Stream object
-      const streamObjNum = nextObjNum++;
-      objectContents.push(`<< /Length ${stream.length} >>\nstream\n${stream}endstream`);
-
-      // Page object
-      const pageObjNum = nextObjNum++;
-      objectContents.push(
-        `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${this.pageWidth} ${this.pageHeight}] ` +
-        `/Contents ${streamObjNum} 0 R ` +
-        `/Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>`
-      );
-      pageObjectNumbers.push(pageObjNum);
+  // Generate PDF
+  generate() {
+    // Finalize current page
+    if (this.currentPageContent) {
+      this.pageContents.push(this.currentPageContent);
     }
 
-    // Now fill in the Pages object (object 2)
-    const kidsStr = pageObjectNumbers.map(n => `${n} 0 R`).join(' ');
-    objectContents[1] = `<< /Type /Pages /Kids [${kidsStr}] /Count ${this.pages.length} >>`;
+    if (this.pageContents.length === 0) {
+      this.pageContents.push('');
+    }
 
-    // Build the PDF string with correct byte offsets
+    const objects = [];
+
+    // Object 1: Catalog
+    objects.push('<< /Type /Catalog /Pages 2 0 R >>');
+
+    // Object 2: Pages (placeholder)
+    objects.push(null);
+
+    // Object 3: Font Helvetica
+    objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
+
+    // Object 4: Font Helvetica-Bold
+    objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
+
+    const pageObjNums = [];
+    let nextObj = 5;
+
+    // Create page objects
+    for (const content of this.pageContents) {
+      // Stream object
+      const streamObj = nextObj++;
+      objects.push(`<< /Length ${content.length} >>\nstream\n${content}endstream`);
+
+      // Page object
+      const pageObj = nextObj++;
+      objects.push(
+        `<< /Type /Page /Parent 2 0 R ` +
+        `/MediaBox [0 0 ${this.pageWidth.toFixed(2)} ${this.pageHeight.toFixed(2)}] ` +
+        `/Contents ${streamObj} 0 R ` +
+        `/Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>`
+      );
+      pageObjNums.push(pageObj);
+    }
+
+    // Fill in Pages object
+    objects[1] = `<< /Type /Pages /Kids [${pageObjNums.map(n => n + ' 0 R').join(' ')}] /Count ${pageObjNums.length} >>`;
+
+    // Build PDF
     let pdf = '%PDF-1.4\n';
-    // Add binary comment to indicate binary content (helps some readers)
     pdf += '%\xE2\xE3\xCF\xD3\n';
 
     const offsets = [];
-
-    for (let i = 0; i < objectContents.length; i++) {
+    for (let i = 0; i < objects.length; i++) {
       offsets.push(pdf.length);
-      pdf += `${i + 1} 0 obj\n`;
-      pdf += objectContents[i];
-      pdf += '\nendobj\n';
+      pdf += `${i + 1} 0 obj\n${objects[i]}\nendobj\n`;
     }
 
-    // Cross-reference table
+    // Xref
     const xrefOffset = pdf.length;
     pdf += 'xref\n';
-    pdf += `0 ${objectContents.length + 1}\n`;
+    pdf += `0 ${objects.length + 1}\n`;
     pdf += '0000000000 65535 f \n';
-
     for (const offset of offsets) {
       pdf += offset.toString().padStart(10, '0') + ' 00000 n \n';
     }
 
     // Trailer
     pdf += 'trailer\n';
-    pdf += `<< /Size ${objectContents.length + 1} /Root 1 0 R >>\n`;
+    pdf += `<< /Size ${objects.length + 1} /Root 1 0 R >>\n`;
     pdf += 'startxref\n';
     pdf += `${xrefOffset}\n`;
     pdf += '%%EOF\n';
@@ -243,51 +314,44 @@ class SimplePDF {
     return pdf;
   }
 
-  // Create PDF from page content
+  // Create PDF from content
   static fromContent(content) {
-    const pdf = new SimplePDF();
-
-    pdf.addPage();
+    const pdf = new PagePDF();
 
     // Title
-    if (content.title) {
-      pdf.addTitle(content.title);
-    } else {
-      pdf.addTitle('Untitled');
-    }
-
-    pdf.currentPage.y -= 5;
+    pdf.addTitle(content.title || 'Untitled');
 
     // Metadata
     if (content.author && content.author !== 'Unknown') {
       pdf.addMeta('Author', content.author);
     }
     if (content.url) {
-      // Truncate very long URLs
-      const url = content.url.length > 100 ? content.url.substring(0, 100) + '...' : content.url;
-      pdf.addMeta('Source', url);
+      pdf.addMeta('Source', content.url);
     }
     if (content.publishDate) {
       pdf.addMeta('Date', content.publishDate);
     }
     if (content.timestamp) {
-      pdf.addMeta('Saved', new Date(content.timestamp).toLocaleString());
+      try {
+        pdf.addMeta('Saved', new Date(content.timestamp).toLocaleString());
+      } catch (e) {
+        pdf.addMeta('Saved', content.timestamp);
+      }
     }
 
-    pdf.currentPage.y -= 5;
-    pdf.addLine();
-    pdf.currentPage.y -= 5;
+    pdf.addSeparator();
 
-    // Body text
+    // Body
     if (content.bodyText) {
-      pdf.addText(content.bodyText);
+      pdf.addBody(content.bodyText);
     }
 
-    return pdf.generateClean();
+    return pdf.generate();
   }
 }
 
-// Make available globally
-window.SimplePDF = SimplePDF;
+// Also keep SimplePDF as alias for compatibility
+window.SimplePDF = PagePDF;
+window.PagePDF = PagePDF;
 
-console.log('PageCub: SimplePDF library loaded');
+console.log('PageCub: PDF library loaded');
