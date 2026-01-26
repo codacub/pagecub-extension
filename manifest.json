@@ -23,7 +23,7 @@
         "icons/icon-happy.png",
         "icons/icon-sad.png",
         "icons/icon-happier.png",
-        "icons/threadcub-logo.png"
+        "icons/pagecub-logo.png"
       ],
       "matches": ["<all_urls>"]
     }

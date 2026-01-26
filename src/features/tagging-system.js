@@ -1785,7 +1785,7 @@ getLogoHtml() {
   
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
     try {
-      const logoUrl = chrome.runtime.getURL('icons/threadcub-logo.png');
+      const logoUrl = chrome.runtime.getURL('icons/pagecub-logo.png');
       console.log('🐻 ThreadCub: Logo URL generated:', logoUrl);
       
       return `<img src="${logoUrl}" width="60" height="60" alt="ThreadCub Logo" style="
