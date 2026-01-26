@@ -714,7 +714,22 @@ class PageCubFloatingButton {
   }
 
   async downloadAsPDF() {
+    // Hide the floating button so it doesn't appear in the PDF
+    const showButtonAfter = () => {
+      if (this.button) {
+        this.button.style.display = 'flex';
+      }
+    };
+
     try {
+      // Hide the button before generating PDF
+      if (this.button) {
+        this.button.style.display = 'none';
+      }
+
+      // Wait for DOM to update
+      await new Promise(resolve => setTimeout(resolve, 150));
+
       this.showToast('Generating PDF...', 'info');
 
       // Get the page title for the filename
@@ -727,6 +742,9 @@ class PageCubFloatingButton {
         action: 'generatePDF',
         title: pageTitle
       }, (response) => {
+        // Always show the button again after PDF generation
+        showButtonAfter();
+
         if (chrome.runtime.lastError) {
           console.error('PageCub: PDF generation error:', chrome.runtime.lastError);
           this.showErrorToast('PDF generation failed: ' + chrome.runtime.lastError.message);
@@ -744,6 +762,8 @@ class PageCubFloatingButton {
       });
 
     } catch (error) {
+      // Ensure button is shown even on error
+      showButtonAfter();
       console.error('PageCub: PDF download failed:', error);
       this.showErrorToast('Download failed: ' + error.message);
     }
