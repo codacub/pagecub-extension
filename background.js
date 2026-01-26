@@ -591,7 +591,7 @@ async function warmUpPage(tabId) {
   }
 }
 
-// This function runs in the page context to trigger lazy loading
+// This function runs in the page context to trigger lazy loading and clean up page for PDF
 function warmUpPageContent() {
   return new Promise(async (resolve) => {
     console.log('📄 PageCub: Warming up page for PDF...');
@@ -606,6 +606,121 @@ function warmUpPageContent() {
       }
     });
     console.log('📄 PageCub: Hidden', hiddenElements.length, 'toast/notification elements');
+
+    // =========================================================================
+    // HIDE SIDEBARS AND NAVIGATION FOR CLEAN PDF
+    // =========================================================================
+
+    // Selectors for elements to hide (sidebars, navs, etc.)
+    const hideSelectors = [
+      // Substack-specific selectors
+      '.sidebar-wrap',
+      '.publication-sidebar',
+      '.navbar-container',
+      '.footer-wrap',
+      '.subscribe-footer',
+      '.post-header-subscribe',
+      '.subscription-widget-wrap',
+      '.subscribe-widget',
+      '.comments-section',
+      '.post-ufi',  // Post footer with likes/comments
+      '.pencraft.pc-display-flex.pc-gap-4',  // Substack nav elements
+
+      // General sidebar patterns
+      'aside',
+      'nav:not(article nav)',  // Hide nav except those inside articles
+      '[class*="sidebar"]',
+      '[class*="Sidebar"]',
+      '[class*="side-bar"]',
+      '[class*="side_bar"]',
+      '[class*="leftnav"]',
+      '[class*="left-nav"]',
+      '[class*="rightnav"]',
+      '[class*="right-nav"]',
+      '[role="navigation"]',
+      '[role="complementary"]',
+
+      // Common UI elements that shouldn't be in PDF
+      '[class*="sticky"]',
+      '[class*="fixed-"]',
+      '.share-buttons',
+      '.social-share',
+      '[class*="share-"]',
+    ];
+
+    let sidebarCount = 0;
+    hideSelectors.forEach(selector => {
+      try {
+        document.querySelectorAll(selector).forEach(el => {
+          // Don't hide the main content or article
+          if (el.tagName === 'ARTICLE' || el.tagName === 'MAIN') return;
+          if (el.closest('article') || el.closest('main')) return;
+
+          if (el.style.display !== 'none') {
+            el.setAttribute('data-pagecub-hidden', el.style.display || 'block');
+            el.style.display = 'none';
+            sidebarCount++;
+          }
+        });
+      } catch (e) {
+        // Ignore invalid selectors
+      }
+    });
+    console.log('📄 PageCub: Hidden', sidebarCount, 'sidebar/nav elements');
+
+    // =========================================================================
+    // REMOVE SHADOWS AND VISUAL ARTIFACTS
+    // =========================================================================
+
+    // Inject CSS to remove shadows and clean up the page for PDF
+    const pdfCleanupStyle = document.createElement('style');
+    pdfCleanupStyle.id = 'pagecub-pdf-cleanup';
+    pdfCleanupStyle.textContent = `
+      /* Remove all box shadows for clean PDF */
+      *, *::before, *::after {
+        box-shadow: none !important;
+        -webkit-box-shadow: none !important;
+        -moz-box-shadow: none !important;
+      }
+
+      /* Remove text shadows */
+      * {
+        text-shadow: none !important;
+      }
+
+      /* Remove any gradient overlays that might cause edge effects */
+      [class*="gradient"],
+      [class*="overlay"],
+      [class*="fade"] {
+        background-image: none !important;
+      }
+
+      /* Ensure article content takes full width */
+      article, .post, .post-content, .body, main {
+        max-width: 100% !important;
+        width: 100% !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        padding-left: 20px !important;
+        padding-right: 20px !important;
+      }
+
+      /* Hide fixed/sticky elements */
+      [style*="position: fixed"],
+      [style*="position: sticky"],
+      [style*="position:fixed"],
+      [style*="position:sticky"] {
+        display: none !important;
+      }
+
+      /* Substack-specific: remove the content container shadow */
+      .container, .main, .content-wrapper {
+        box-shadow: none !important;
+        border: none !important;
+      }
+    `;
+    document.head.appendChild(pdfCleanupStyle);
+    console.log('📄 PageCub: Injected PDF cleanup styles');
 
     // Trigger all lazy-loaded images
     const images = document.querySelectorAll('img[data-src], img[loading="lazy"], img.lazy');
