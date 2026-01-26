@@ -715,32 +715,34 @@ class PageCubFloatingButton {
 
   async downloadAsPDF() {
     try {
-      this.showToast('Extracting page content...', 'info');
+      this.showToast('Generating PDF...', 'info');
 
-      // Extract page content
-      const extractor = new PageExtractor();
-      const content = extractor.extract();
+      // Get the page title for the filename
+      const pageTitle = document.title || 'page';
 
-      // Generate PDF using SimplePDF
-      const pdfContent = SimplePDF.fromContent(content);
+      console.log('PageCub: Requesting PDF generation via background script...');
 
-      // Generate filename
-      const filename = this.sanitizeFilename(content.title) + '.pdf';
+      // Send message to background script to generate PDF using Chrome's debugger API
+      chrome.runtime.sendMessage({
+        action: 'generatePDF',
+        title: pageTitle
+      }, (response) => {
+        if (chrome.runtime.lastError) {
+          console.error('PageCub: PDF generation error:', chrome.runtime.lastError);
+          this.showErrorToast('PDF generation failed: ' + chrome.runtime.lastError.message);
+          return;
+        }
 
-      // Download the PDF file
-      const blob = new Blob([pdfContent], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+        if (response && response.success) {
+          this.showSuccessToast('Downloaded as PDF!');
+          console.log('PageCub: PDF download completed');
+        } else {
+          const errorMsg = response?.error || 'Unknown error';
+          console.error('PageCub: PDF generation failed:', errorMsg);
+          this.showErrorToast('PDF failed: ' + errorMsg);
+        }
+      });
 
-      this.showSuccessToast('Downloaded as PDF!');
-      console.log('PageCub: PDF download completed:', filename);
     } catch (error) {
       console.error('PageCub: PDF download failed:', error);
       this.showErrorToast('Download failed: ' + error.message);

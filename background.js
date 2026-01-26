@@ -7,7 +7,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     case 'download':
       handleDownload(request, sendResponse);
       return true;
-    
+
+    case 'generatePDF':
+      handleGeneratePDF(request, sender, sendResponse);
+      return true;
+
     case 'saveConversation':
       handleSaveConversation(request.data)
         .then(result => sendResponse({ success: true, data: result }))
@@ -348,7 +352,211 @@ chrome.runtime.onStartup.addListener(() => {
   console.log('🐻 Background: Extension started');
 });
 
-console.log('🐻 ThreadCub background script loaded and ready');
+console.log('🐻 PageCub background script loaded and ready');
+
+// === SECTION 8: PDF Generation using Chrome Debugger API ===
+
+// PDF settings for A4 paper with reasonable margins
+const PDF_SETTINGS = {
+  printBackground: true,
+  landscape: false,
+  scale: 1.0,
+  paperWidth: 8.27,   // A4 width in inches
+  paperHeight: 11.69, // A4 height in inches
+  marginTop: 0.4,
+  marginBottom: 0.4,
+  marginLeft: 0.4,
+  marginRight: 0.4,
+  displayHeaderFooter: false
+};
+
+async function handleGeneratePDF(request, sender, sendResponse) {
+  const tabId = sender.tab?.id;
+  const pageTitle = request.title || 'page';
+
+  if (!tabId) {
+    sendResponse({ success: false, error: 'No tab ID available' });
+    return;
+  }
+
+  console.log('📄 Background: Starting PDF generation for tab:', tabId);
+
+  const target = { tabId: tabId };
+  let debuggerAttached = false;
+
+  try {
+    // Step 1: Warm up the page (load lazy images, scroll to trigger content)
+    console.log('📄 Background: Warming up page...');
+    await warmUpPage(tabId);
+
+    // Step 2: Attach debugger
+    console.log('📄 Background: Attaching debugger...');
+    await attachDebugger(target);
+    debuggerAttached = true;
+
+    // Step 3: Generate PDF
+    console.log('📄 Background: Generating PDF...');
+    const pdfData = await generatePDFWithDebugger(target);
+
+    // Step 4: Detach debugger
+    console.log('📄 Background: Detaching debugger...');
+    await detachDebugger(target);
+    debuggerAttached = false;
+
+    // Step 5: Download PDF
+    console.log('📄 Background: Downloading PDF...');
+    const filename = sanitizeFilename(pageTitle) + '.pdf';
+    const dataUrl = 'data:application/pdf;base64,' + pdfData;
+
+    chrome.downloads.download({
+      url: dataUrl,
+      filename: 'pagecub-' + filename,
+      saveAs: false
+    }, (downloadId) => {
+      if (chrome.runtime.lastError) {
+        console.error('📄 Background: Download failed:', chrome.runtime.lastError);
+        sendResponse({ success: false, error: chrome.runtime.lastError.message });
+      } else {
+        console.log('📄 Background: PDF download started, ID:', downloadId);
+        sendResponse({ success: true, downloadId: downloadId });
+      }
+    });
+
+  } catch (error) {
+    console.error('📄 Background: PDF generation error:', error);
+
+    // Make sure to detach debugger on error
+    if (debuggerAttached) {
+      try {
+        await detachDebugger(target);
+      } catch (detachError) {
+        console.error('📄 Background: Error detaching debugger:', detachError);
+      }
+    }
+
+    sendResponse({ success: false, error: error.message || 'PDF generation failed' });
+  }
+}
+
+// Attach Chrome debugger to tab
+function attachDebugger(target) {
+  return new Promise((resolve, reject) => {
+    chrome.debugger.attach(target, '1.3', () => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+
+// Detach Chrome debugger from tab
+function detachDebugger(target) {
+  return new Promise((resolve, reject) => {
+    chrome.debugger.detach(target, () => {
+      if (chrome.runtime.lastError) {
+        // Ignore "not attached" errors
+        if (chrome.runtime.lastError.message.includes('not attached')) {
+          resolve();
+        } else {
+          reject(new Error(chrome.runtime.lastError.message));
+        }
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+
+// Generate PDF using Page.printToPDF
+function generatePDFWithDebugger(target) {
+  return new Promise((resolve, reject) => {
+    chrome.debugger.sendCommand(target, 'Page.printToPDF', PDF_SETTINGS, (result) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+      } else if (result && result.data) {
+        resolve(result.data);
+      } else {
+        reject(new Error('No PDF data returned'));
+      }
+    });
+  });
+}
+
+// Warm up page: load lazy images, scroll through page
+async function warmUpPage(tabId) {
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId: tabId },
+      func: warmUpPageContent
+    });
+    // Wait a bit for resources to load
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  } catch (error) {
+    console.log('📄 Background: Warm up warning:', error.message);
+    // Continue even if warm-up fails
+  }
+}
+
+// This function runs in the page context to trigger lazy loading
+function warmUpPageContent() {
+  return new Promise(async (resolve) => {
+    console.log('📄 PageCub: Warming up page for PDF...');
+
+    // Trigger all lazy-loaded images
+    const images = document.querySelectorAll('img[data-src], img[loading="lazy"], img.lazy');
+    images.forEach(img => {
+      if (img.dataset.src) {
+        img.src = img.dataset.src;
+      }
+      img.loading = 'eager';
+    });
+
+    // Scroll through page to trigger lazy content
+    const scrollStep = window.innerHeight;
+    const maxScroll = document.documentElement.scrollHeight;
+    const originalScroll = window.scrollY;
+
+    for (let pos = 0; pos < maxScroll; pos += scrollStep) {
+      window.scrollTo(0, pos);
+      await new Promise(r => setTimeout(r, 100));
+    }
+
+    // Wait for images to load
+    const allImages = Array.from(document.images);
+    await Promise.all(allImages.map(img => {
+      if (img.complete) return Promise.resolve();
+      return new Promise(resolve => {
+        img.onload = resolve;
+        img.onerror = resolve;
+        setTimeout(resolve, 2000); // Timeout per image
+      });
+    }));
+
+    // Wait for fonts
+    if (document.fonts && document.fonts.ready) {
+      await document.fonts.ready;
+    }
+
+    // Scroll back to top
+    window.scrollTo(0, originalScroll);
+
+    console.log('📄 PageCub: Page warm-up complete');
+    resolve();
+  });
+}
+
+// Sanitize filename for PDF
+function sanitizeFilename(title) {
+  return title
+    .replace(/[<>:"/\\|?*]/g, '-')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .substring(0, 100)
+    .toLowerCase() || 'page';
+}
 
 // === SECTION 7: Auth Token Handler (FIXED - Proper Cookie Parsing) ===
 
