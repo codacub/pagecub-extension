@@ -1,5 +1,37 @@
 // PageCub - Application Initialization
 
+// =============================================================================
+// ALLOWED SITES CONFIGURATION
+// Only show the PageCub button on these domains
+// Easy to expand - just add new patterns to the array
+// =============================================================================
+const ALLOWED_SITES = [
+  // Substack - newsletter platform
+  { pattern: /\.substack\.com$/i, name: 'Substack' },
+
+  // Medium - blogging platform
+  { pattern: /^medium\.com$/i, name: 'Medium' },
+  { pattern: /\.medium\.com$/i, name: 'Medium subdomain' },
+];
+
+/**
+ * Check if the current page is on an allowed site
+ * @returns {boolean} true if the current site is allowed
+ */
+function isAllowedSite() {
+  const hostname = window.location.hostname.toLowerCase();
+
+  for (const site of ALLOWED_SITES) {
+    if (site.pattern.test(hostname)) {
+      console.log(`PageCub: Allowed site detected - ${site.name} (${hostname})`);
+      return true;
+    }
+  }
+
+  console.log(`PageCub: Site not in allowed list (${hostname}) - button will not be shown`);
+  return false;
+}
+
 // Main initialization when DOM is ready
 function initializePageCub() {
   console.log('PageCub: Initializing...');
@@ -14,6 +46,12 @@ function initializePageCub() {
 
 function startPageCub() {
   console.log('PageCub: Starting application...');
+
+  // Check if current site is in the allowed list
+  if (!isAllowedSite()) {
+    console.log('PageCub: Skipping initialization - site not supported');
+    return;
+  }
 
   try {
     // Initialize floating button
