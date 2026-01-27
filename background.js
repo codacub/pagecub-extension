@@ -874,12 +874,25 @@ function warmUpPageContent() {
       // Clone and add article content
       const articleClone = articleElement.cloneNode(true);
 
-      // Clean up the cloned content
+      // Strip ALL inline styles from cloned elements to remove Substack's spacing
+      articleClone.querySelectorAll('*').forEach(el => {
+        el.removeAttribute('style');
+        // Also remove classes that might have problematic CSS
+        // Keep semantic classes but remove layout-specific ones
+        const classAttr = el.getAttribute('class');
+        if (classAttr) {
+          // Keep the class for now but CSS will override
+        }
+      });
+
+      // Set a class for styling and reset article wrapper styles
+      articleClone.className = 'pagecub-article-content';
       articleClone.style.cssText = `
         max-width: 100% !important;
         width: 100% !important;
         margin: 0 !important;
         padding: 0 !important;
+        display: block !important;
       `;
 
       // Remove unwanted elements from the clone
@@ -891,9 +904,14 @@ function warmUpPageContent() {
         '[class*="engagement"]',
         '[class*="action-bar"]',
         '[class*="comments"]',
+        '[class*="footer"]',
+        '[class*="header"]:not(h1):not(h2):not(h3)',
         'button',
         '[role="button"]',
         'iframe:not([src*="youtube"]):not([src*="vimeo"])',
+        'svg:not(img svg)',  // Remove standalone SVGs (icons) but keep those in images
+        '[class*="icon"]',
+        '[class*="Icon"]',
       ];
 
       removeSelectors.forEach(selector => {
@@ -919,10 +937,11 @@ function warmUpPageContent() {
       // Add the clean wrapper to body
       document.body.appendChild(pdfWrapper);
 
-      // Add cleanup CSS for PDF rendering
+      // Add cleanup CSS for PDF rendering with clean typography
       const cleanupStyle = document.createElement('style');
       cleanupStyle.id = 'pagecub-cleanup-style';
       cleanupStyle.textContent = `
+        /* Reset document */
         html, body {
           overflow: visible !important;
           height: auto !important;
@@ -931,40 +950,155 @@ function warmUpPageContent() {
           margin: 0 !important;
           padding: 0 !important;
         }
+
+        /* Main wrapper */
         #pagecub-pdf-wrapper {
           page-break-inside: auto !important;
         }
+
+        /* Global resets for all cloned content */
         #pagecub-pdf-wrapper * {
           box-shadow: none !important;
           text-shadow: none !important;
           max-width: 100% !important;
+          float: none !important;
+          position: static !important;
         }
-        #pagecub-pdf-wrapper img {
-          max-width: 100% !important;
-          height: auto !important;
+
+        /* Reset all divs inside article to remove Substack layout spacing */
+        #pagecub-pdf-wrapper .pagecub-article-content,
+        #pagecub-pdf-wrapper .pagecub-article-content > * {
+          display: block !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+
+        /* Typography: Paragraphs */
+        #pagecub-pdf-wrapper p {
+          display: block !important;
+          margin: 0 0 1em 0 !important;
+          padding: 0 !important;
+          line-height: 1.6 !important;
+          orphans: 3 !important;
+          widows: 3 !important;
+        }
+
+        /* Typography: Headings */
+        #pagecub-pdf-wrapper h1 {
+          font-size: 28px !important;
+          font-weight: bold !important;
+          margin: 1.5em 0 0.5em 0 !important;
+          padding: 0 !important;
+          line-height: 1.2 !important;
+          page-break-after: avoid !important;
+        }
+        #pagecub-pdf-wrapper h2 {
+          font-size: 22px !important;
+          font-weight: bold !important;
+          margin: 1.5em 0 0.5em 0 !important;
+          padding: 0 !important;
+          line-height: 1.3 !important;
+          page-break-after: avoid !important;
+        }
+        #pagecub-pdf-wrapper h3 {
+          font-size: 18px !important;
+          font-weight: bold !important;
+          margin: 1.2em 0 0.5em 0 !important;
+          padding: 0 !important;
+          line-height: 1.3 !important;
+          page-break-after: avoid !important;
+        }
+
+        /* Typography: Lists - FIX for bullet point spacing */
+        #pagecub-pdf-wrapper ul,
+        #pagecub-pdf-wrapper ol {
+          display: block !important;
+          margin: 1em 0 !important;
+          padding: 0 0 0 2em !important;
+          list-style-position: outside !important;
+        }
+        #pagecub-pdf-wrapper ul {
+          list-style-type: disc !important;
+        }
+        #pagecub-pdf-wrapper ol {
+          list-style-type: decimal !important;
+        }
+        #pagecub-pdf-wrapper li {
+          display: list-item !important;
+          margin: 0 0 0.5em 0 !important;
+          padding: 0 !important;
+          line-height: 1.5 !important;
+        }
+        #pagecub-pdf-wrapper li > p {
+          margin: 0 !important;
+          display: inline !important;
+        }
+
+        /* Typography: Blockquotes */
+        #pagecub-pdf-wrapper blockquote {
+          display: block !important;
+          margin: 1em 0 !important;
+          padding: 0.5em 0 0.5em 1.5em !important;
+          border-left: 3px solid #ccc !important;
+          font-style: italic !important;
           page-break-inside: avoid !important;
         }
+
+        /* Typography: Code blocks */
+        #pagecub-pdf-wrapper pre {
+          display: block !important;
+          margin: 1em 0 !important;
+          padding: 1em !important;
+          background: #f5f5f5 !important;
+          border-radius: 4px !important;
+          overflow-x: auto !important;
+          font-family: monospace !important;
+          font-size: 14px !important;
+          line-height: 1.4 !important;
+          page-break-inside: avoid !important;
+        }
+        #pagecub-pdf-wrapper code {
+          font-family: monospace !important;
+          font-size: 14px !important;
+          background: #f0f0f0 !important;
+          padding: 0.1em 0.3em !important;
+          border-radius: 2px !important;
+        }
+        #pagecub-pdf-wrapper pre code {
+          background: none !important;
+          padding: 0 !important;
+        }
+
+        /* Images */
+        #pagecub-pdf-wrapper img {
+          display: block !important;
+          max-width: 100% !important;
+          height: auto !important;
+          margin: 1em auto !important;
+          page-break-inside: avoid !important;
+        }
+
+        /* Links */
         #pagecub-pdf-wrapper a {
           color: #0066cc !important;
           text-decoration: underline !important;
         }
-        #pagecub-pdf-wrapper p {
-          margin: 0 0 16px 0 !important;
-          orphans: 3 !important;
-          widows: 3 !important;
+
+        /* Horizontal rules */
+        #pagecub-pdf-wrapper hr {
+          display: block !important;
+          margin: 2em 0 !important;
+          padding: 0 !important;
+          border: none !important;
+          border-top: 1px solid #ddd !important;
         }
-        #pagecub-pdf-wrapper h1,
-        #pagecub-pdf-wrapper h2,
-        #pagecub-pdf-wrapper h3 {
-          margin: 24px 0 16px 0 !important;
-          line-height: 1.3 !important;
-          page-break-after: avoid !important;
-        }
-        #pagecub-pdf-wrapper pre,
-        #pagecub-pdf-wrapper blockquote {
-          page-break-inside: avoid !important;
-          max-width: 100% !important;
-          overflow-x: auto !important;
+
+        /* Hide any remaining Substack UI elements */
+        #pagecub-pdf-wrapper [class*="button"],
+        #pagecub-pdf-wrapper [class*="Button"],
+        #pagecub-pdf-wrapper [class*="cta"],
+        #pagecub-pdf-wrapper [class*="CTA"] {
+          display: none !important;
         }
       `;
       document.head.appendChild(cleanupStyle);
