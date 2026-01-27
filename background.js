@@ -592,114 +592,14 @@ async function warmUpPage(tabId) {
   }
 }
 
-// This function runs in the page context to trigger lazy loading and clean up page for PDF
+// This function runs in the page context to prepare page for PDF capture
 function warmUpPageContent() {
   return new Promise(async (resolve) => {
-    console.log('📄 PageCub: Warming up page for PDF...');
-
-    // Hide any toast notifications so they don't appear in the PDF
-    const toasts = document.querySelectorAll('.threadcub-toast, [class*="toast"], [class*="notification"]');
-    const hiddenElements = [];
-    toasts.forEach(toast => {
-      if (toast.style.display !== 'none') {
-        hiddenElements.push({ element: toast, originalDisplay: toast.style.display });
-        toast.style.display = 'none';
-      }
-    });
-    console.log('📄 PageCub: Hidden', hiddenElements.length, 'toast/notification elements');
+    console.log('📄 PageCub: Preparing page for PDF capture...');
 
     // =========================================================================
-    // HIDE SIDEBARS AND NAVIGATION FOR CLEAN PDF
+    // STEP 1: TRIGGER LAZY LOADING (images, scroll, fonts)
     // =========================================================================
-
-    // Selectors for elements to hide - CONSERVATIVE list to avoid hiding content
-    // Only target specific UI elements, not content containers
-    const hideSelectors = [
-      // Substack subdomain selectors (*.substack.com) - specific classes only
-      '.sidebar-wrap',
-      '.publication-sidebar',
-      '.navbar-container',
-      '.footer-wrap',
-      '.subscribe-footer',
-      '.post-header-subscribe',
-      '.subscription-widget-wrap',
-      '.subscribe-widget',
-      '.comments-section',
-      '.post-ufi',
-
-      // General navigation (be careful not to hide content)
-      'body > nav',
-      'body > header',
-      'body > footer',
-      '[role="navigation"]:not(article [role="navigation"])',
-    ];
-
-    let sidebarCount = 0;
-    hideSelectors.forEach(selector => {
-      try {
-        document.querySelectorAll(selector).forEach(el => {
-          // Don't hide the main content or article
-          if (el.tagName === 'ARTICLE' || el.tagName === 'MAIN') return;
-          if (el.closest('article') || el.closest('main')) return;
-
-          if (el.style.display !== 'none') {
-            el.setAttribute('data-pagecub-hidden', el.style.display || 'block');
-            el.style.display = 'none';
-            sidebarCount++;
-          }
-        });
-      } catch (e) {
-        // Ignore invalid selectors
-      }
-    });
-    console.log('📄 PageCub: Hidden', sidebarCount, 'sidebar/nav elements');
-
-    // =========================================================================
-    // REMOVE SHADOWS AND VISUAL ARTIFACTS
-    // =========================================================================
-
-    // Inject CSS to remove shadows and clean up the page for PDF
-    const pdfCleanupStyle = document.createElement('style');
-    pdfCleanupStyle.id = 'pagecub-pdf-cleanup';
-    pdfCleanupStyle.textContent = `
-      /* Remove all box shadows for clean PDF */
-      *, *::before, *::after {
-        box-shadow: none !important;
-        -webkit-box-shadow: none !important;
-        -moz-box-shadow: none !important;
-      }
-
-      /* Remove text shadows */
-      * {
-        text-shadow: none !important;
-      }
-
-      /* Ensure article content takes full width */
-      article, .post, .post-content, .body, main {
-        max-width: 100% !important;
-        width: 100% !important;
-        margin-left: 0 !important;
-        margin-right: 0 !important;
-        padding-left: 20px !important;
-        padding-right: 20px !important;
-      }
-
-      /* Hide fixed/sticky positioned elements (but not main content) */
-      body > [style*="position: fixed"],
-      body > [style*="position: sticky"],
-      body > [style*="position:fixed"],
-      body > [style*="position:sticky"] {
-        display: none !important;
-      }
-
-      /* Substack-specific shadow removal */
-      .container, .main, .content-wrapper {
-        box-shadow: none !important;
-        border: none !important;
-      }
-    `;
-    document.head.appendChild(pdfCleanupStyle);
-    console.log('📄 PageCub: Injected PDF cleanup styles');
 
     // Trigger all lazy-loaded images
     const images = document.querySelectorAll('img[data-src], img[loading="lazy"], img.lazy');
@@ -727,7 +627,7 @@ function warmUpPageContent() {
       return new Promise(resolve => {
         img.onload = resolve;
         img.onerror = resolve;
-        setTimeout(resolve, 2000); // Timeout per image
+        setTimeout(resolve, 2000);
       });
     }));
 
@@ -737,9 +637,287 @@ function warmUpPageContent() {
     }
 
     // Scroll back to top
-    window.scrollTo(0, originalScroll);
+    window.scrollTo(0, 0);
 
-    console.log('📄 PageCub: Page warm-up complete');
+    // =========================================================================
+    // STEP 2: FIND ARTICLE CONTENT
+    // =========================================================================
+
+    // Selectors to find article content, in order of specificity
+    const articleSelectors = [
+      // Substack-specific selectors
+      '.post-content',
+      '.available-content',
+      '.body.markup',
+      '[class*="post-content"]',
+      '[class*="PostContent"]',
+
+      // Generic article selectors
+      'article',
+      '[role="article"]',
+      'main article',
+      '.article-content',
+      '.entry-content',
+      '.content-body',
+      'main',
+    ];
+
+    let articleElement = null;
+    for (const selector of articleSelectors) {
+      try {
+        const el = document.querySelector(selector);
+        if (el && el.innerText && el.innerText.length > 200) {
+          articleElement = el;
+          console.log('📄 PageCub: Found article content with selector:', selector);
+          break;
+        }
+      } catch (e) {
+        // Ignore invalid selectors
+      }
+    }
+
+    // =========================================================================
+    // STEP 3: EXTRACT TITLE AND METADATA
+    // =========================================================================
+
+    // Find title
+    const titleSelectors = [
+      'h1.post-title',
+      'h1[class*="post-title"]',
+      'h1[class*="PostTitle"]',
+      'article h1',
+      'main h1',
+      'h1',
+    ];
+
+    let titleElement = null;
+    for (const selector of titleSelectors) {
+      try {
+        const el = document.querySelector(selector);
+        if (el && el.innerText && el.innerText.length > 0) {
+          titleElement = el;
+          break;
+        }
+      } catch (e) {}
+    }
+
+    // Find subtitle/description
+    const subtitleSelectors = [
+      '.subtitle',
+      '[class*="subtitle"]',
+      '[class*="Subtitle"]',
+      'h2.post-subtitle',
+      '.post-meta',
+    ];
+
+    let subtitleElement = null;
+    for (const selector of subtitleSelectors) {
+      try {
+        const el = document.querySelector(selector);
+        if (el && el.innerText) {
+          subtitleElement = el;
+          break;
+        }
+      } catch (e) {}
+    }
+
+    // Find author info
+    const authorSelectors = [
+      '.author-name',
+      '[class*="author"]',
+      '[class*="Author"]',
+      '.byline',
+      '[rel="author"]',
+    ];
+
+    let authorElement = null;
+    for (const selector of authorSelectors) {
+      try {
+        const el = document.querySelector(selector);
+        if (el && el.innerText) {
+          authorElement = el;
+          break;
+        }
+      } catch (e) {}
+    }
+
+    // =========================================================================
+    // STEP 4: CREATE CLEAN PDF CONTAINER
+    // =========================================================================
+
+    if (articleElement) {
+      console.log('📄 PageCub: Creating clean PDF container...');
+
+      // Create wrapper for clean PDF content
+      const pdfWrapper = document.createElement('div');
+      pdfWrapper.id = 'pagecub-pdf-wrapper';
+      pdfWrapper.style.cssText = `
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: auto !important;
+        min-height: 100vh !important;
+        background: white !important;
+        z-index: 999999 !important;
+        padding: 40px !important;
+        box-sizing: border-box !important;
+        overflow: visible !important;
+        font-family: Georgia, 'Times New Roman', serif !important;
+        font-size: 16px !important;
+        line-height: 1.6 !important;
+        color: #1a1a1a !important;
+      `;
+
+      // Add title if found
+      if (titleElement) {
+        const titleClone = titleElement.cloneNode(true);
+        titleClone.style.cssText = `
+          font-size: 32px !important;
+          font-weight: bold !important;
+          margin: 0 0 16px 0 !important;
+          line-height: 1.2 !important;
+          color: #1a1a1a !important;
+        `;
+        pdfWrapper.appendChild(titleClone);
+      }
+
+      // Add subtitle if found
+      if (subtitleElement) {
+        const subtitleClone = subtitleElement.cloneNode(true);
+        subtitleClone.style.cssText = `
+          font-size: 18px !important;
+          color: #666 !important;
+          margin: 0 0 16px 0 !important;
+          font-style: italic !important;
+        `;
+        pdfWrapper.appendChild(subtitleClone);
+      }
+
+      // Add author if found
+      if (authorElement) {
+        const authorClone = authorElement.cloneNode(true);
+        authorClone.style.cssText = `
+          font-size: 14px !important;
+          color: #888 !important;
+          margin: 0 0 32px 0 !important;
+        `;
+        pdfWrapper.appendChild(authorClone);
+      }
+
+      // Add horizontal rule
+      const hr = document.createElement('hr');
+      hr.style.cssText = `
+        border: none !important;
+        border-top: 1px solid #ddd !important;
+        margin: 0 0 32px 0 !important;
+      `;
+      pdfWrapper.appendChild(hr);
+
+      // Clone and add article content
+      const articleClone = articleElement.cloneNode(true);
+
+      // Clean up the cloned content
+      articleClone.style.cssText = `
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      `;
+
+      // Remove unwanted elements from the clone
+      const removeSelectors = [
+        '.share-buttons',
+        '.social-share',
+        '[class*="subscribe"]',
+        '[class*="Subscribe"]',
+        '[class*="engagement"]',
+        '[class*="action-bar"]',
+        '[class*="comments"]',
+        'button',
+        '[role="button"]',
+        'iframe:not([src*="youtube"]):not([src*="vimeo"])',
+      ];
+
+      removeSelectors.forEach(selector => {
+        try {
+          articleClone.querySelectorAll(selector).forEach(el => el.remove());
+        } catch (e) {}
+      });
+
+      pdfWrapper.appendChild(articleClone);
+
+      // =========================================================================
+      // STEP 5: APPLY TO PAGE
+      // =========================================================================
+
+      // Hide all original body content
+      Array.from(document.body.children).forEach(child => {
+        if (child.id !== 'pagecub-pdf-wrapper') {
+          child.setAttribute('data-pagecub-original-display', child.style.display || '');
+          child.style.display = 'none';
+        }
+      });
+
+      // Add the clean wrapper to body
+      document.body.appendChild(pdfWrapper);
+
+      // Add cleanup CSS
+      const cleanupStyle = document.createElement('style');
+      cleanupStyle.id = 'pagecub-cleanup-style';
+      cleanupStyle.textContent = `
+        body {
+          overflow: visible !important;
+          height: auto !important;
+        }
+        #pagecub-pdf-wrapper * {
+          box-shadow: none !important;
+          text-shadow: none !important;
+        }
+        #pagecub-pdf-wrapper img {
+          max-width: 100% !important;
+          height: auto !important;
+        }
+        #pagecub-pdf-wrapper a {
+          color: #0066cc !important;
+          text-decoration: underline !important;
+        }
+        #pagecub-pdf-wrapper p {
+          margin: 0 0 16px 0 !important;
+        }
+        #pagecub-pdf-wrapper h1,
+        #pagecub-pdf-wrapper h2,
+        #pagecub-pdf-wrapper h3 {
+          margin: 24px 0 16px 0 !important;
+          line-height: 1.3 !important;
+        }
+      `;
+      document.head.appendChild(cleanupStyle);
+
+      console.log('📄 PageCub: Clean PDF container ready');
+    } else {
+      // Fallback: just inject basic cleanup CSS
+      console.log('📄 PageCub: Article not found, using fallback cleanup');
+
+      const fallbackStyle = document.createElement('style');
+      fallbackStyle.id = 'pagecub-fallback-style';
+      fallbackStyle.textContent = `
+        *, *::before, *::after {
+          box-shadow: none !important;
+          text-shadow: none !important;
+        }
+        nav, header, footer, aside,
+        [role="navigation"],
+        [class*="sidebar"],
+        [class*="footer"],
+        [class*="header"]:not(article header) {
+          display: none !important;
+        }
+      `;
+      document.head.appendChild(fallbackStyle);
+    }
+
+    console.log('📄 PageCub: Page preparation complete');
     resolve();
   });
 }
