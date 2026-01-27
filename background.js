@@ -404,7 +404,7 @@ async function handleGeneratePDF(request, sender, sendResponse) {
   let debuggerAttached = false;
 
   try {
-    // Step 1: Warm up the page (load lazy images, scroll to trigger content)
+    // Step 1: Warm up the page (load lazy images, extract content)
     console.log('📄 Background: Warming up page...');
     await warmUpPage(tabId);
 
@@ -422,9 +422,12 @@ async function handleGeneratePDF(request, sender, sendResponse) {
     await detachDebugger(target);
     debuggerAttached = false;
 
-    // Step 5: Download PDF
+    // Step 5: Restore the page to original state
+    console.log('📄 Background: Restoring page...');
+    await restorePage(tabId);
+
+    // Step 6: Download PDF
     console.log('📄 Background: Downloading PDF...');
-    // Use the URL slug directly - it's already clean from the content script
     const filename = pageSlug + '.pdf';
     const dataUrl = 'data:application/pdf;base64,' + pdfData;
 
@@ -452,6 +455,13 @@ async function handleGeneratePDF(request, sender, sendResponse) {
       } catch (detachError) {
         console.error('📄 Background: Error detaching debugger:', detachError);
       }
+    }
+
+    // Try to restore page even on error
+    try {
+      await restorePage(tabId);
+    } catch (restoreError) {
+      console.error('📄 Background: Error restoring page:', restoreError);
     }
 
     sendResponse({ success: false, error: error.message || 'PDF generation failed' });
@@ -590,6 +600,50 @@ async function warmUpPage(tabId) {
     console.log('📄 Background: Warm up warning:', error.message);
     // Continue even if warm-up fails
   }
+}
+
+// Restore page after PDF generation
+async function restorePage(tabId) {
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId: tabId },
+      func: restorePageContent
+    });
+    console.log('📄 Background: Page restored successfully');
+  } catch (error) {
+    console.log('📄 Background: Restore warning:', error.message);
+    // Continue even if restore fails - user can refresh
+  }
+}
+
+// This function runs in the page context to restore original page state
+function restorePageContent() {
+  console.log('📄 PageCub: Restoring page to original state...');
+
+  // Remove the PDF wrapper
+  const pdfWrapper = document.getElementById('pagecub-pdf-wrapper');
+  if (pdfWrapper) {
+    pdfWrapper.remove();
+    console.log('📄 PageCub: Removed PDF wrapper');
+  }
+
+  // Remove cleanup styles
+  const cleanupStyle = document.getElementById('pagecub-cleanup-style');
+  if (cleanupStyle) cleanupStyle.remove();
+
+  const fallbackStyle = document.getElementById('pagecub-fallback-style');
+  if (fallbackStyle) fallbackStyle.remove();
+
+  // Restore all hidden body children
+  Array.from(document.body.children).forEach(child => {
+    if (child.hasAttribute('data-pagecub-original-display')) {
+      const originalDisplay = child.getAttribute('data-pagecub-original-display');
+      child.style.display = originalDisplay || '';
+      child.removeAttribute('data-pagecub-original-display');
+    }
+  });
+
+  console.log('📄 PageCub: Page restoration complete');
 }
 
 // This function runs in the page context to prepare page for PDF capture
@@ -749,14 +803,15 @@ function warmUpPageContent() {
       console.log('📄 PageCub: Creating clean PDF container...');
 
       // Create wrapper for clean PDF content
+      // Using position: relative (NOT fixed) so content can expand to full height
+      // This allows Page.printToPDF to capture all content across multiple pages
       const pdfWrapper = document.createElement('div');
       pdfWrapper.id = 'pagecub-pdf-wrapper';
       pdfWrapper.style.cssText = `
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 100vw !important;
-        height: auto !important;
+        position: relative !important;
+        width: 100% !important;
+        max-width: 800px !important;
+        margin: 0 auto !important;
         min-height: 100vh !important;
         background: white !important;
         z-index: 999999 !important;
@@ -767,6 +822,8 @@ function warmUpPageContent() {
         font-size: 16px !important;
         line-height: 1.6 !important;
         color: #1a1a1a !important;
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
       `;
 
       // Add title if found
@@ -862,21 +919,30 @@ function warmUpPageContent() {
       // Add the clean wrapper to body
       document.body.appendChild(pdfWrapper);
 
-      // Add cleanup CSS
+      // Add cleanup CSS for PDF rendering
       const cleanupStyle = document.createElement('style');
       cleanupStyle.id = 'pagecub-cleanup-style';
       cleanupStyle.textContent = `
-        body {
+        html, body {
           overflow: visible !important;
           height: auto !important;
+          min-height: 100% !important;
+          background: white !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        #pagecub-pdf-wrapper {
+          page-break-inside: auto !important;
         }
         #pagecub-pdf-wrapper * {
           box-shadow: none !important;
           text-shadow: none !important;
+          max-width: 100% !important;
         }
         #pagecub-pdf-wrapper img {
           max-width: 100% !important;
           height: auto !important;
+          page-break-inside: avoid !important;
         }
         #pagecub-pdf-wrapper a {
           color: #0066cc !important;
@@ -884,12 +950,21 @@ function warmUpPageContent() {
         }
         #pagecub-pdf-wrapper p {
           margin: 0 0 16px 0 !important;
+          orphans: 3 !important;
+          widows: 3 !important;
         }
         #pagecub-pdf-wrapper h1,
         #pagecub-pdf-wrapper h2,
         #pagecub-pdf-wrapper h3 {
           margin: 24px 0 16px 0 !important;
           line-height: 1.3 !important;
+          page-break-after: avoid !important;
+        }
+        #pagecub-pdf-wrapper pre,
+        #pagecub-pdf-wrapper blockquote {
+          page-break-inside: avoid !important;
+          max-width: 100% !important;
+          overflow-x: auto !important;
         }
       `;
       document.head.appendChild(cleanupStyle);
