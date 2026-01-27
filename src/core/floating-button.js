@@ -811,18 +811,18 @@ class PageCubFloatingButton {
         return substackSubdomainMatch[1];
       }
 
-      // Substack main domain pattern: /home/post/p-123456-article-slug
-      // Extract just the article slug part (after p-ID-)
-      const substackMainMatch = pathname.match(/\/home\/post\/p-\d+-(.+)/);
+      // Substack main domain patterns: /home/post/* and /inbox/post/*
+      // Format can be: /home/post/p-123456-article-slug or just /home/post/123456
+      const substackMainMatch = pathname.match(/\/(home|inbox)\/post\/(?:p-)?(\d+)(?:-(.+))?/);
       if (substackMainMatch) {
-        return substackMainMatch[1];
+        // If there's an article slug after the ID, use it; otherwise use the post ID
+        return substackMainMatch[3] || `post-${substackMainMatch[2]}`;
       }
 
-      // Substack main domain fallback: /home/post/article-slug (if format varies)
-      const substackHomeMatch = pathname.match(/\/home\/post\/([^/?#]+)/);
-      if (substackHomeMatch) {
-        // Remove any leading ID prefix like "p-123456-"
-        const slug = substackHomeMatch[1].replace(/^p-\d+-/, '');
+      // Fallback for any /home/post/* or /inbox/post/* pattern
+      const substackPostMatch = pathname.match(/\/(home|inbox)\/post\/([^/?#]+)/);
+      if (substackPostMatch) {
+        const slug = substackPostMatch[2].replace(/^p-/, '');
         return slug;
       }
 

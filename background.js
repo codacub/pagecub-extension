@@ -612,9 +612,10 @@ function warmUpPageContent() {
     // HIDE SIDEBARS AND NAVIGATION FOR CLEAN PDF
     // =========================================================================
 
-    // Selectors for elements to hide (sidebars, navs, etc.)
+    // Selectors for elements to hide - CONSERVATIVE list to avoid hiding content
+    // Only target specific UI elements, not content containers
     const hideSelectors = [
-      // Substack subdomain selectors (*.substack.com)
+      // Substack subdomain selectors (*.substack.com) - specific classes only
       '.sidebar-wrap',
       '.publication-sidebar',
       '.navbar-container',
@@ -624,83 +625,13 @@ function warmUpPageContent() {
       '.subscription-widget-wrap',
       '.subscribe-widget',
       '.comments-section',
-      '.post-ufi',  // Post footer with likes/comments
-      '.pencraft.pc-display-flex.pc-gap-4',  // Substack nav elements
+      '.post-ufi',
 
-      // Substack main domain selectors (substack.com/home/post/*)
-      // Top header bar with profile icon, "Subscribed" button, close X
-      '[class*="reader-nav"]',
-      '[class*="ReaderNav"]',
-      '[class*="reader-header"]',
-      '[class*="top-header"]',
-      '[class*="TopHeader"]',
-      '.reader-post-header',
-      '[class*="post-header"]:not(.post-header-content)',
-      '[class*="modal-header"]',
-      '[class*="dialog-header"]',
-
-      // Left sidebar progress/navigation dots
-      '[class*="toc-"]',
-      '[class*="TableOfContents"]',
-      '[class*="progress-indicator"]',
-      '[class*="ProgressIndicator"]',
-      '[class*="scroll-indicator"]',
-      '[class*="chapter-nav"]',
-      '[class*="post-nav"]',
-      '[class*="reading-progress"]',
-
-      // Bottom action bar with engagement icons
-      '[class*="post-footer"]',
-      '[class*="PostFooter"]',
-      '[class*="engagement"]',
-      '[class*="Engagement"]',
-      '[class*="action-bar"]',
-      '[class*="ActionBar"]',
-      '[class*="post-actions"]',
-      '[class*="PostActions"]',
-      '[class*="like-button"]',
-      '[class*="LikeButton"]',
-      '[class*="comment-button"]',
-      '[class*="share-button"]',
-      '[class*="restack"]',
-      '[class*="Restack"]',
-
-      // Substack reader mode specific
-      '[class*="reader-controls"]',
-      '[class*="ReaderControls"]',
-      '[class*="close-button"]',
-      '[class*="CloseButton"]',
-
-      // General sidebar patterns
-      'aside',
-      'nav:not(article nav)',  // Hide nav except those inside articles
-      '[class*="sidebar"]',
-      '[class*="Sidebar"]',
-      '[class*="side-bar"]',
-      '[class*="side_bar"]',
-      '[class*="leftnav"]',
-      '[class*="left-nav"]',
-      '[class*="rightnav"]',
-      '[class*="right-nav"]',
-      '[role="navigation"]',
-      '[role="complementary"]',
-
-      // Common UI elements that shouldn't be in PDF
-      '[class*="sticky"]',
-      '[class*="fixed-"]',
-      '.share-buttons',
-      '.social-share',
-      '[class*="share-"]:not([class*="share-content"])',
-
-      // Header elements
-      'header:not(article header)',
-      '[class*="site-header"]',
-      '[class*="global-header"]',
-
-      // Footer elements
-      'footer:not(article footer)',
-      '[class*="site-footer"]',
-      '[class*="global-footer"]',
+      // General navigation (be careful not to hide content)
+      'body > nav',
+      'body > header',
+      'body > footer',
+      '[role="navigation"]:not(article [role="navigation"])',
     ];
 
     let sidebarCount = 0;
@@ -743,13 +674,6 @@ function warmUpPageContent() {
         text-shadow: none !important;
       }
 
-      /* Remove any gradient overlays that might cause edge effects */
-      [class*="gradient"],
-      [class*="overlay"],
-      [class*="fade"] {
-        background-image: none !important;
-      }
-
       /* Ensure article content takes full width */
       article, .post, .post-content, .body, main {
         max-width: 100% !important;
@@ -760,93 +684,18 @@ function warmUpPageContent() {
         padding-right: 20px !important;
       }
 
-      /* Hide fixed/sticky elements */
-      [style*="position: fixed"],
-      [style*="position: sticky"],
-      [style*="position:fixed"],
-      [style*="position:sticky"] {
+      /* Hide fixed/sticky positioned elements (but not main content) */
+      body > [style*="position: fixed"],
+      body > [style*="position: sticky"],
+      body > [style*="position:fixed"],
+      body > [style*="position:sticky"] {
         display: none !important;
       }
 
-      /* Substack-specific: remove the content container shadow */
+      /* Substack-specific shadow removal */
       .container, .main, .content-wrapper {
         box-shadow: none !important;
         border: none !important;
-      }
-
-      /* ============================================= */
-      /* Substack main domain (substack.com/home/post) */
-      /* ============================================= */
-
-      /* Hide top header bar */
-      [class*="reader-nav"],
-      [class*="ReaderNav"],
-      [class*="top-header"],
-      [class*="TopHeader"],
-      [class*="modal-close"],
-      [class*="ModalClose"] {
-        display: none !important;
-      }
-
-      /* Hide left sidebar progress dots/navigation */
-      [class*="toc"],
-      [class*="TableOfContents"],
-      [class*="progress"],
-      [class*="Progress"],
-      [class*="chapter"],
-      [class*="Chapter"] {
-        display: none !important;
-      }
-
-      /* Hide bottom action bar with engagement icons */
-      [class*="post-footer"],
-      [class*="PostFooter"],
-      [class*="engagement"],
-      [class*="Engagement"],
-      [class*="action-bar"],
-      [class*="ActionBar"],
-      [class*="reactions"],
-      [class*="Reactions"],
-      [class*="like-button"],
-      [class*="comment-button"],
-      [class*="share-button"],
-      [class*="restack"],
-      [class*="Restack"] {
-        display: none !important;
-      }
-
-      /* Hide subscribe prompts and CTAs */
-      [class*="subscribe"],
-      [class*="Subscribe"],
-      [class*="paywall"],
-      [class*="Paywall"],
-      [class*="upgrade"],
-      [class*="Upgrade"] {
-        display: none !important;
-      }
-
-      /* Ensure reader content fills available space */
-      [class*="reader-content"],
-      [class*="ReaderContent"],
-      [class*="post-content"],
-      [class*="PostContent"],
-      [class*="article-content"],
-      [class*="ArticleContent"] {
-        max-width: 100% !important;
-        width: 100% !important;
-        padding: 20px !important;
-        margin: 0 auto !important;
-      }
-
-      /* Reset any modal/overlay positioning */
-      [class*="reader"],
-      [class*="Reader"],
-      [class*="modal"],
-      [class*="Modal"] {
-        position: static !important;
-        transform: none !important;
-        left: 0 !important;
-        top: 0 !important;
       }
     `;
     document.head.appendChild(pdfCleanupStyle);
