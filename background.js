@@ -911,6 +911,37 @@ function warmUpPageContent() {
         } catch (e) {}
       });
 
+      // Remove empty elements that create spacing gaps
+      // These are empty <p>, <div>, <span> tags cloned from the original content
+      articleClone.querySelectorAll('p, div, span').forEach(el => {
+        const text = el.textContent.trim();
+        // Remove if empty, only whitespace, or contains marker values like "$0"
+        if (!text || text === '$0' || /^\$\d+$/.test(text)) {
+          el.remove();
+        }
+      });
+
+      // Remove empty list items
+      articleClone.querySelectorAll('li').forEach(el => {
+        if (!el.textContent.trim()) {
+          el.remove();
+        }
+      });
+
+      // Remove empty blockquotes
+      articleClone.querySelectorAll('blockquote').forEach(el => {
+        if (!el.textContent.trim()) {
+          el.remove();
+        }
+      });
+
+      // Clean up empty lists (ul/ol with no remaining li children)
+      articleClone.querySelectorAll('ul, ol').forEach(el => {
+        if (el.querySelectorAll('li').length === 0) {
+          el.remove();
+        }
+      });
+
       pdfWrapper.appendChild(articleClone);
 
       // =========================================================================
